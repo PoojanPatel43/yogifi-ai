@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "Yogifi AI",
+    "slug": "yogifi-ai",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#6C63FF"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yogifi.ai",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Yogifi AI needs camera access to detect and analyze your yoga poses in real-time."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#6C63FF"
+      },
+      "package": "com.yogifi.ai",
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Yogifi AI to access your camera for pose detection."
+        }
+      ],
+      "expo-asset",
+      "expo-font"
+    ]
+  }
+}
