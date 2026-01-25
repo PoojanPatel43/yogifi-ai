@@ -63,6 +63,11 @@ export const cameraStyles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
 
+  circleButtonActive: {
+    backgroundColor: 'rgba(108, 99, 255, 0.6)',
+    borderColor: Colors.primary,
+  },
+
   circleButtonText: {
     color: '#FFFFFF',
     fontSize: 20,
@@ -166,8 +171,8 @@ export const cameraStyles = StyleSheet.create({
   // FPS counter (for debugging)
   fpsCounter: {
     position: 'absolute',
-    top: 120,
-    right: 20,
+    bottom: 200,
+    left: 16,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     borderRadius: 8,
     paddingVertical: 4,

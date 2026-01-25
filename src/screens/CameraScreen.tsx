@@ -20,9 +20,21 @@ import {
   FPSCounter,
 } from '../utils/camera';
 import { startSessionApi, endSessionApi, cancelSessionApi } from '../services/api';
-import { evaluatePose, PoseEvaluation } from '../services/poseRules';
+import { evaluatePose, PoseEvaluation, resetHoldState } from '../services/poseRules';
+import { detectPose, resetDetector, isMockDetection } from '../services/poseDetector';
+import {
+  announcePhase,
+  announceSessionStart,
+  announceSessionEnd,
+  announceJointCorrection,
+  announceHoldProgress,
+  setVoiceEnabled,
+  resetVoiceGuidance,
+} from '../services/voiceGuidance';
 import SkeletonOverlay from '../components/SkeletonOverlay';
 import PoseFeedbackOverlay from '../components/PoseFeedbackOverlay';
+import PoseDebugOverlay from '../components/PoseDebugOverlay';
+import ReferencePoseOverlay from '../components/ReferencePoseOverlay';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Camera'>;
 
@@ -54,6 +66,17 @@ const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
   const [keypoints, setKeypoints] = useState<Keypoint[]>([]);
   const [poseEvaluation, setPoseEvaluation] = useState<PoseEvaluation | null>(null);
   const previousKeypointsRef = useRef<Keypoint[]>([]);
+
+  // Debug mode (toggle in dev)
+  const [showDebug, setShowDebug] = useState(__DEV__);
+
+  // Reference pose overlay
+  const [showReference, setShowReference] = useState(false);
+
+  // Voice guidance
+  const [voiceEnabled, setVoiceEnabledState] = useState(true);
+  const lastPhaseRef = useRef<string | null>(null);
+  const lastAnnouncedHoldProgressRef = useRef<number>(0);
 
   // Loading states
   const [isStartingSession, setIsStartingSession] = useState(false);
@@ -107,83 +130,88 @@ const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
     };
   }, [sessionState.isActive]);
 
-  // Simulated pose detection (will be replaced with actual TFLite model)
-  // This generates realistic-looking keypoints for demonstration
-  const generateSimulatedKeypoints = useCallback((): Keypoint[] => {
-    const baseKeypoints: Keypoint[] = [
-      // Face
-      { name: 'nose', x: 0.5, y: 0.15, confidence: 0.95 },
-      { name: 'left_eye', x: 0.48, y: 0.13, confidence: 0.92 },
-      { name: 'right_eye', x: 0.52, y: 0.13, confidence: 0.92 },
-      { name: 'left_ear', x: 0.45, y: 0.14, confidence: 0.85 },
-      { name: 'right_ear', x: 0.55, y: 0.14, confidence: 0.85 },
-      // Upper body
-      { name: 'left_shoulder', x: 0.35, y: 0.25, confidence: 0.9 },
-      { name: 'right_shoulder', x: 0.65, y: 0.25, confidence: 0.9 },
-      { name: 'left_elbow', x: 0.2, y: 0.25, confidence: 0.88 },
-      { name: 'right_elbow', x: 0.8, y: 0.25, confidence: 0.88 },
-      { name: 'left_wrist', x: 0.1, y: 0.25, confidence: 0.85 },
-      { name: 'right_wrist', x: 0.9, y: 0.25, confidence: 0.85 },
-      // Lower body
-      { name: 'left_hip', x: 0.4, y: 0.5, confidence: 0.87 },
-      { name: 'right_hip', x: 0.6, y: 0.5, confidence: 0.87 },
-      { name: 'left_knee', x: 0.3, y: 0.7, confidence: 0.82 },
-      { name: 'right_knee', x: 0.7, y: 0.65, confidence: 0.82 },
-      { name: 'left_ankle', x: 0.25, y: 0.9, confidence: 0.78 },
-      { name: 'right_ankle', x: 0.75, y: 0.85, confidence: 0.78 },
-    ];
-
-    // Add some noise to simulate natural movement
-    return baseKeypoints.map(kp => ({
-      ...kp,
-      x: kp.x + (Math.random() - 0.5) * 0.02,
-      y: kp.y + (Math.random() - 0.5) * 0.02,
-      confidence: Math.min(1, kp.confidence + (Math.random() - 0.5) * 0.1),
-    }));
-  }, []);
-
   // Frame processing with pose evaluation
   useEffect(() => {
     if (sessionState.isActive && isCameraReady) {
       const targetInterval = 1000 / 15; // 15 FPS for pose evaluation
 
-      frameProcessingRef.current = setInterval(() => {
+      const processFrame = async () => {
         const fps = fpsCounterRef.current.tick();
         setCurrentFPS(fps);
 
-        // Generate simulated keypoints (will be replaced with actual model inference)
-        const detectedKeypoints = generateSimulatedKeypoints();
-        setKeypoints(detectedKeypoints);
+        // Detect pose using mock or real ML detector
+        const poseData = await detectPose(poseName);
 
-        // Evaluate pose
-        const evaluation = evaluatePose(
-          detectedKeypoints,
-          poseName,
-          previousKeypointsRef.current
-        );
-        setPoseEvaluation(evaluation);
+        if (poseData && poseData.keypoints.length > 0) {
+          const detectedKeypoints = poseData.keypoints;
+          setKeypoints(detectedKeypoints);
 
-        // Store previous keypoints for stability calculation
-        previousKeypointsRef.current = detectedKeypoints;
+          // Evaluate pose (include debug info when debug mode is on)
+          const evaluation = evaluatePose(
+            detectedKeypoints,
+            poseName,
+            previousKeypointsRef.current,
+            showDebug
+          );
+          setPoseEvaluation(evaluation);
 
-        // Accumulate scores
-        scoresRef.current.push(evaluation.overallScore);
-        alignmentScoresRef.current.push(evaluation.alignmentScore);
-        stabilityScoresRef.current.push(evaluation.stabilityScore);
+          // Voice guidance: announce phase changes
+          if (voiceEnabled && evaluation.phase !== lastPhaseRef.current) {
+            lastPhaseRef.current = evaluation.phase;
+            announcePhase(evaluation.phase);
+          }
 
-        // Update session state with current score
-        setSessionState((prev) => ({
-          ...prev,
-          currentScore: evaluation.overallScore,
-          poseDetected: evaluation.isCorrectPose,
-        }));
-      }, targetInterval);
+          // Voice guidance: announce hold progress milestones
+          if (voiceEnabled && evaluation.phase === 'hold') {
+            const progress = evaluation.holdProgress;
+            const lastProgress = lastAnnouncedHoldProgressRef.current;
+            if (
+              (progress >= 25 && lastProgress < 25) ||
+              (progress >= 50 && lastProgress < 50) ||
+              (progress >= 75 && lastProgress < 75)
+            ) {
+              lastAnnouncedHoldProgressRef.current = progress;
+              announceHoldProgress(progress);
+            }
+          }
+
+          // Voice guidance: announce corrections for problematic joints
+          if (voiceEnabled && evaluation.feedback.length > 0) {
+            const errorFeedback = evaluation.feedback.find(fb => fb.severity === 'error');
+            if (errorFeedback && errorFeedback.joint) {
+              announceJointCorrection(errorFeedback.joint);
+            }
+          }
+
+          // Store previous keypoints for stability calculation
+          previousKeypointsRef.current = detectedKeypoints;
+
+          // Accumulate scores
+          scoresRef.current.push(evaluation.overallScore);
+          alignmentScoresRef.current.push(evaluation.alignmentScore);
+          stabilityScoresRef.current.push(evaluation.stabilityScore);
+
+          // Update session state with current score
+          setSessionState((prev) => ({
+            ...prev,
+            currentScore: evaluation.overallScore,
+            poseDetected: evaluation.isCorrectPose,
+          }));
+        }
+      };
+
+      frameProcessingRef.current = setInterval(processFrame, targetInterval);
     } else {
       if (frameProcessingRef.current) {
         clearInterval(frameProcessingRef.current);
         frameProcessingRef.current = null;
       }
       fpsCounterRef.current.reset();
+      resetDetector();
+      resetHoldState();
+      resetVoiceGuidance();
+      lastPhaseRef.current = null;
+      lastAnnouncedHoldProgressRef.current = 0;
       setCurrentFPS(0);
       setKeypoints([]);
       setPoseEvaluation(null);
@@ -194,7 +222,7 @@ const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
         clearInterval(frameProcessingRef.current);
       }
     };
-  }, [sessionState.isActive, isCameraReady, poseName, generateSimulatedKeypoints]);
+  }, [sessionState.isActive, isCameraReady, poseName, showDebug]);
 
   // Request permission handler
   const handleRequestPermission = async () => {
@@ -206,6 +234,13 @@ const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
   const toggleCameraFacing = useCallback(() => {
     setCameraType((current) => (current === 'back' ? 'front' : 'back'));
   }, []);
+
+  // Toggle voice guidance
+  const toggleVoice = useCallback(() => {
+    const newState = !voiceEnabled;
+    setVoiceEnabledState(newState);
+    setVoiceEnabled(newState);
+  }, [voiceEnabled]);
 
   // Handle camera ready
   const handleCameraReady = () => {
@@ -235,6 +270,13 @@ const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
         alignmentScoresRef.current = [];
         stabilityScoresRef.current = [];
         previousKeypointsRef.current = [];
+        lastPhaseRef.current = null;
+        lastAnnouncedHoldProgressRef.current = 0;
+
+        // Announce session start
+        if (voiceEnabled) {
+          announceSessionStart(poseName);
+        }
 
         setSessionState({
           isActive: true,
@@ -287,6 +329,11 @@ const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
         ...prev,
         isActive: false,
       }));
+
+      // Announce session end
+      if (voiceEnabled) {
+        announceSessionEnd(avgScore);
+      }
 
       if (response.success) {
         navigation.replace('SessionComplete', {
@@ -442,6 +489,19 @@ const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
         isSessionActive={sessionState.isActive}
       />
 
+      {/* Debug overlay (dev mode) */}
+      <PoseDebugOverlay
+        debugInfo={poseEvaluation?.debugInfo}
+        visible={showDebug && sessionState.isActive}
+      />
+
+      {/* Reference pose overlay */}
+      <ReferencePoseOverlay
+        poseName={poseName}
+        visible={showReference && !sessionState.isActive}
+        opacity={0.35}
+      />
+
       {/* Overlay UI */}
       <View style={styles.overlay} pointerEvents="box-none">
         {/* Top bar */}
@@ -460,6 +520,34 @@ const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
               {formatTime(sessionState.elapsedSeconds)}
             </Text>
           </View>
+
+          {/* Voice toggle button */}
+          <TouchableOpacity
+            style={[styles.circleButton, voiceEnabled && styles.circleButtonActive]}
+            onPress={toggleVoice}
+          >
+            <Text style={styles.circleButtonText}>{voiceEnabled ? '🔊' : '🔇'}</Text>
+          </TouchableOpacity>
+
+          {/* Reference pose toggle button */}
+          {!sessionState.isActive && (
+            <TouchableOpacity
+              style={[styles.circleButton, showReference && styles.circleButtonActive]}
+              onPress={() => setShowReference(!showReference)}
+            >
+              <Text style={styles.circleButtonText}>👤</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Debug toggle button (dev only) */}
+          {__DEV__ && (
+            <TouchableOpacity
+              style={[styles.circleButton, showDebug && styles.circleButtonActive]}
+              onPress={() => setShowDebug(!showDebug)}
+            >
+              <Text style={styles.circleButtonText}>🐛</Text>
+            </TouchableOpacity>
+          )}
 
           {/* Flip camera button */}
           <TouchableOpacity
@@ -517,10 +605,12 @@ const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
           )}
         </View>
 
-        {/* FPS counter (for debugging) */}
+        {/* Debug info (FPS counter and mock detection indicator) */}
         {sessionState.isActive && __DEV__ && (
           <View style={styles.fpsCounter}>
-            <Text style={styles.fpsText}>{currentFPS} FPS</Text>
+            <Text style={styles.fpsText}>
+              {currentFPS} FPS {isMockDetection() ? '(Mock)' : '(ML)'}
+            </Text>
           </View>
         )}
       </View>

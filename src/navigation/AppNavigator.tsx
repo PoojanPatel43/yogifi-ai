@@ -9,6 +9,7 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
 import PoseSelectionScreen from '../screens/PoseSelectionScreen';
+import PoseInstructionScreen from '../screens/PoseInstructionScreen';
 import CameraSetupScreen from '../screens/CameraSetupScreen';
 import CameraScreen from '../screens/CameraScreen';
 import SessionCompleteScreen from '../screens/SessionCompleteScreen';
@@ -54,6 +55,10 @@ const MainStack = () => (
     <Stack.Screen
       name="PoseSelection"
       component={PoseSelectionScreen}
+    />
+    <Stack.Screen
+      name="PoseInstruction"
+      component={PoseInstructionScreen}
     />
     <Stack.Screen
       name="CameraSetup"

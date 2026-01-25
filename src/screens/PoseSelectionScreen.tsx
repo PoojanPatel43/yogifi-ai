@@ -62,7 +62,7 @@ const PoseSelectionScreen: React.FC<Props> = ({ navigation }) => {
     : poses;
 
   const handlePoseSelect = (pose: Pose) => {
-    navigation.navigate('CameraSetup', { poseId: pose.id, poseName: pose.name });
+    navigation.navigate('PoseInstruction', { poseId: pose.id, poseName: pose.name });
   };
 
   const renderDifficultyFilter = () => (

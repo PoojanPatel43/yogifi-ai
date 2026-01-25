@@ -5,6 +5,7 @@ export type RootStackParamList = {
   Register: undefined;
   Home: undefined;
   PoseSelection: undefined;
+  PoseInstruction: PoseInstructionParams;
   CameraSetup: CameraSetupParams | undefined;
   Camera: CameraParams | undefined;
   SessionComplete: SessionCompleteParams;
@@ -12,6 +13,12 @@ export type RootStackParamList = {
   SessionDetails: SessionDetailsParams;
   Profile: undefined;
 };
+
+// Pose Instruction screen params
+export interface PoseInstructionParams {
+  poseId: string;
+  poseName: string;
+}
 
 // Camera Setup screen params
 export interface CameraSetupParams {

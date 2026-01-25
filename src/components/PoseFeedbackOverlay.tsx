@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { PoseFeedback, PoseEvaluation } from '../services/poseRules';
+import { PoseEvaluation, PosePhase } from '../services/poseRules';
 import Colors from '../constants/colors';
 
 interface PoseFeedbackOverlayProps {
@@ -41,6 +41,19 @@ const getSeverityColor = (severity: string): string => {
   }
 };
 
+const getPhaseInfo = (phase: PosePhase): { label: string; color: string; icon: string } => {
+  switch (phase) {
+    case 'setup':
+      return { label: 'SETUP', color: Colors.textMuted, icon: 'body-outline' };
+    case 'adjustment':
+      return { label: 'ADJUSTING', color: Colors.warning, icon: 'construct-outline' };
+    case 'hold':
+      return { label: 'HOLD', color: Colors.success, icon: 'timer-outline' };
+    case 'complete':
+      return { label: 'COMPLETE!', color: Colors.primary, icon: 'checkmark-done' };
+  }
+};
+
 const PoseFeedbackOverlay: React.FC<PoseFeedbackOverlayProps> = ({
   evaluation,
   isSessionActive,
@@ -49,34 +62,46 @@ const PoseFeedbackOverlay: React.FC<PoseFeedbackOverlayProps> = ({
     return null;
   }
 
-  const { overallScore, alignmentScore, stabilityScore, feedback, isCorrectPose } = evaluation;
-
-  // Get the most important feedback (highest severity)
-  const sortedFeedback = [...feedback].sort((a, b) => {
-    const severityOrder = { error: 0, warning: 1, info: 2 };
-    return severityOrder[a.severity] - severityOrder[b.severity];
-  });
-
-  const primaryFeedback = sortedFeedback[0];
+  const { overallScore, alignmentScore, stabilityScore, feedback, isCorrectPose, phase, holdProgress } = evaluation;
+  const phaseInfo = getPhaseInfo(phase);
+  const primaryFeedback = feedback[0];
 
   return (
     <View style={styles.container} pointerEvents="box-none">
-      {/* Score display in top right */}
+      {/* Score and Phase display in top right */}
       <View style={styles.scoreContainer}>
+        {/* Phase indicator */}
+        <View style={[styles.phaseCard, { borderColor: phaseInfo.color }]}>
+          <Ionicons name={phaseInfo.icon as any} size={16} color={phaseInfo.color} />
+          <Text style={[styles.phaseText, { color: phaseInfo.color }]}>{phaseInfo.label}</Text>
+        </View>
+
+        {/* Main score card */}
         <View style={styles.scoreCard}>
           <Text style={styles.scoreLabel}>Score</Text>
           <Text style={[styles.scoreValue, { color: getScoreColor(overallScore) }]}>
             {overallScore}
           </Text>
+
+          {/* Hold progress bar */}
+          {phase === 'hold' && (
+            <View style={styles.progressContainer}>
+              <View style={styles.progressBar}>
+                <View style={[styles.progressFill, { width: `${holdProgress}%` }]} />
+              </View>
+              <Text style={styles.progressText}>{Math.round(holdProgress)}%</Text>
+            </View>
+          )}
         </View>
 
+        {/* Sub-scores */}
         <View style={styles.miniScoresContainer}>
           <View style={styles.miniScoreItem}>
             <Ionicons name="resize-outline" size={14} color={Colors.textLight} />
             <Text style={styles.miniScoreValue}>{alignmentScore}</Text>
           </View>
           <View style={styles.miniScoreItem}>
-            <Ionicons name="body-outline" size={14} color={Colors.textLight} />
+            <Ionicons name="fitness-outline" size={14} color={Colors.textLight} />
             <Text style={styles.miniScoreValue}>{stabilityScore}</Text>
           </View>
         </View>
@@ -106,13 +131,20 @@ const PoseFeedbackOverlay: React.FC<PoseFeedbackOverlayProps> = ({
               {primaryFeedback.correction && (
                 <Text style={styles.feedbackCorrection}>{primaryFeedback.correction}</Text>
               )}
+              {primaryFeedback.currentValue !== undefined && primaryFeedback.targetValue !== undefined && (
+                <View style={styles.valueContainer}>
+                  <Text style={styles.valueText}>
+                    Current: {primaryFeedback.currentValue}° → Target: {primaryFeedback.targetValue}°
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
 
           {/* Show additional feedback items if available */}
-          {sortedFeedback.length > 1 && (
+          {feedback.length > 1 && (
             <View style={styles.additionalFeedback}>
-              {sortedFeedback.slice(1, 3).map((fb, index) => (
+              {feedback.slice(1, 3).map((fb, index) => (
                 <View key={index} style={styles.additionalFeedbackItem}>
                   <Ionicons
                     name={getSeverityIcon(fb.severity) as any}
@@ -142,12 +174,28 @@ const styles = StyleSheet.create({
     right: 16,
     alignItems: 'flex-end',
   },
+  phaseCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginBottom: 8,
+    borderWidth: 2,
+    gap: 6,
+  },
+  phaseText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
   scoreCard: {
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
-    minWidth: 80,
+    minWidth: 90,
   },
   scoreLabel: {
     color: Colors.textLight,
@@ -156,13 +204,35 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   scoreValue: {
-    fontSize: 36,
+    fontSize: 40,
     fontWeight: 'bold',
+  },
+  progressContainer: {
+    marginTop: 8,
+    alignItems: 'center',
+    width: '100%',
+  },
+  progressBar: {
+    width: '100%',
+    height: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: Colors.success,
+    borderRadius: 3,
+  },
+  progressText: {
+    color: Colors.textLight,
+    fontSize: 10,
+    marginTop: 4,
   },
   miniScoresContainer: {
     flexDirection: 'row',
     marginTop: 8,
-    gap: 12,
+    gap: 8,
   },
   miniScoreItem: {
     flexDirection: 'row',
@@ -204,8 +274,8 @@ const styles = StyleSheet.create({
   },
   feedbackCard: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
     borderRadius: 16,
     padding: 16,
     borderLeftWidth: 4,
@@ -224,6 +294,20 @@ const styles = StyleSheet.create({
     color: Colors.textLight,
     fontSize: 13,
   },
+  valueContainer: {
+    marginTop: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  valueText: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
+  },
   additionalFeedback: {
     marginTop: 8,
     gap: 4,
@@ -232,7 +316,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    padding: 8,
+    padding: 10,
     borderRadius: 8,
     gap: 8,
   },
