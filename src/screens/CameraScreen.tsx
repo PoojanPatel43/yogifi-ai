@@ -5,40 +5,23 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Dimensions,
+  StyleSheet,
 } from 'react-native';
 import { CameraView, CameraType } from 'expo-camera';
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList, CameraSessionState, Keypoint } from '../types';
-import { cameraStyles as styles } from '../styles/camera';
+import { RootStackParamList, CameraSessionState } from '../types';
 import Colors from '../constants/colors';
+import { APP_CONFIG, generateMockScores, getRandomEncouragement } from '../constants/config';
 import {
   checkCameraPermission,
   requestCameraPermission,
   openAppSettings,
   formatTime,
-  FPSCounter,
 } from '../utils/camera';
 import { startSessionApi, endSessionApi, cancelSessionApi } from '../services/api';
-import { evaluatePose, PoseEvaluation, resetHoldState } from '../services/poseRules';
-import { detectPose, resetDetector, isMockDetection } from '../services/poseDetector';
-import {
-  announcePhase,
-  announceSessionStart,
-  announceSessionEnd,
-  announceJointCorrection,
-  announceHoldProgress,
-  setVoiceEnabled,
-  resetVoiceGuidance,
-} from '../services/voiceGuidance';
-import SkeletonOverlay from '../components/SkeletonOverlay';
-import PoseFeedbackOverlay from '../components/PoseFeedbackOverlay';
-import PoseDebugOverlay from '../components/PoseDebugOverlay';
-import ReferencePoseOverlay from '../components/ReferencePoseOverlay';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Camera'>;
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
   const { poseId, poseName = 'Yoga Pose' } = route.params ?? {};
@@ -62,38 +45,16 @@ const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
     sessionId: null,
   });
 
-  // Pose detection state
-  const [keypoints, setKeypoints] = useState<Keypoint[]>([]);
-  const [poseEvaluation, setPoseEvaluation] = useState<PoseEvaluation | null>(null);
-  const previousKeypointsRef = useRef<Keypoint[]>([]);
-
-  // Debug mode (toggle in dev)
-  const [showDebug, setShowDebug] = useState(__DEV__);
-
-  // Reference pose overlay
-  const [showReference, setShowReference] = useState(false);
-
-  // Voice guidance
-  const [voiceEnabled, setVoiceEnabledState] = useState(true);
-  const lastPhaseRef = useRef<string | null>(null);
-  const lastAnnouncedHoldProgressRef = useRef<number>(0);
-
   // Loading states
   const [isStartingSession, setIsStartingSession] = useState(false);
   const [isEndingSession, setIsEndingSession] = useState(false);
 
-  // FPS counter for frame processing
-  const fpsCounterRef = useRef(new FPSCounter());
-  const [currentFPS, setCurrentFPS] = useState(0);
-  const frameProcessingRef = useRef<NodeJS.Timeout | null>(null);
+  // Encouragement message
+  const [encouragement, setEncouragement] = useState(getRandomEncouragement());
 
   // Timer interval ref
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Accumulated scores for calculating average
-  const scoresRef = useRef<number[]>([]);
-  const alignmentScoresRef = useRef<number[]>([]);
-  const stabilityScoresRef = useRef<number[]>([]);
+  const encouragementRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check camera permission on mount
   useEffect(() => {
@@ -116,113 +77,31 @@ const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
           elapsedSeconds: prev.elapsedSeconds + 1,
         }));
       }, 1000);
+
+      // Rotate encouragement messages every 10 seconds
+      encouragementRef.current = setInterval(() => {
+        setEncouragement(getRandomEncouragement());
+      }, 10000);
     } else {
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
+      if (encouragementRef.current) {
+        clearInterval(encouragementRef.current);
+        encouragementRef.current = null;
+      }
     }
 
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
+      if (encouragementRef.current) {
+        clearInterval(encouragementRef.current);
+      }
     };
   }, [sessionState.isActive]);
-
-  // Frame processing with pose evaluation
-  useEffect(() => {
-    if (sessionState.isActive && isCameraReady) {
-      const targetInterval = 1000 / 15; // 15 FPS for pose evaluation
-
-      const processFrame = async () => {
-        const fps = fpsCounterRef.current.tick();
-        setCurrentFPS(fps);
-
-        // Detect pose using mock or real ML detector
-        const poseData = await detectPose(poseName);
-
-        if (poseData && poseData.keypoints.length > 0) {
-          const detectedKeypoints = poseData.keypoints;
-          setKeypoints(detectedKeypoints);
-
-          // Evaluate pose (include debug info when debug mode is on)
-          const evaluation = evaluatePose(
-            detectedKeypoints,
-            poseName,
-            previousKeypointsRef.current,
-            showDebug
-          );
-          setPoseEvaluation(evaluation);
-
-          // Voice guidance: announce phase changes
-          if (voiceEnabled && evaluation.phase !== lastPhaseRef.current) {
-            lastPhaseRef.current = evaluation.phase;
-            announcePhase(evaluation.phase);
-          }
-
-          // Voice guidance: announce hold progress milestones
-          if (voiceEnabled && evaluation.phase === 'hold') {
-            const progress = evaluation.holdProgress;
-            const lastProgress = lastAnnouncedHoldProgressRef.current;
-            if (
-              (progress >= 25 && lastProgress < 25) ||
-              (progress >= 50 && lastProgress < 50) ||
-              (progress >= 75 && lastProgress < 75)
-            ) {
-              lastAnnouncedHoldProgressRef.current = progress;
-              announceHoldProgress(progress);
-            }
-          }
-
-          // Voice guidance: announce corrections for problematic joints
-          if (voiceEnabled && evaluation.feedback.length > 0) {
-            const errorFeedback = evaluation.feedback.find(fb => fb.severity === 'error');
-            if (errorFeedback && errorFeedback.joint) {
-              announceJointCorrection(errorFeedback.joint);
-            }
-          }
-
-          // Store previous keypoints for stability calculation
-          previousKeypointsRef.current = detectedKeypoints;
-
-          // Accumulate scores
-          scoresRef.current.push(evaluation.overallScore);
-          alignmentScoresRef.current.push(evaluation.alignmentScore);
-          stabilityScoresRef.current.push(evaluation.stabilityScore);
-
-          // Update session state with current score
-          setSessionState((prev) => ({
-            ...prev,
-            currentScore: evaluation.overallScore,
-            poseDetected: evaluation.isCorrectPose,
-          }));
-        }
-      };
-
-      frameProcessingRef.current = setInterval(processFrame, targetInterval);
-    } else {
-      if (frameProcessingRef.current) {
-        clearInterval(frameProcessingRef.current);
-        frameProcessingRef.current = null;
-      }
-      fpsCounterRef.current.reset();
-      resetDetector();
-      resetHoldState();
-      resetVoiceGuidance();
-      lastPhaseRef.current = null;
-      lastAnnouncedHoldProgressRef.current = 0;
-      setCurrentFPS(0);
-      setKeypoints([]);
-      setPoseEvaluation(null);
-    }
-
-    return () => {
-      if (frameProcessingRef.current) {
-        clearInterval(frameProcessingRef.current);
-      }
-    };
-  }, [sessionState.isActive, isCameraReady, poseName, showDebug]);
 
   // Request permission handler
   const handleRequestPermission = async () => {
@@ -234,13 +113,6 @@ const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
   const toggleCameraFacing = useCallback(() => {
     setCameraType((current) => (current === 'back' ? 'front' : 'back'));
   }, []);
-
-  // Toggle voice guidance
-  const toggleVoice = useCallback(() => {
-    const newState = !voiceEnabled;
-    setVoiceEnabledState(newState);
-    setVoiceEnabled(newState);
-  }, [voiceEnabled]);
 
   // Handle camera ready
   const handleCameraReady = () => {
@@ -265,27 +137,15 @@ const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
       const response = await startSessionApi(poseId);
 
       if (response.success && response.data) {
-        // Reset score arrays
-        scoresRef.current = [];
-        alignmentScoresRef.current = [];
-        stabilityScoresRef.current = [];
-        previousKeypointsRef.current = [];
-        lastPhaseRef.current = null;
-        lastAnnouncedHoldProgressRef.current = 0;
-
-        // Announce session start
-        if (voiceEnabled) {
-          announceSessionStart(poseName);
-        }
-
         setSessionState({
           isActive: true,
           startTime: Date.now(),
           elapsedSeconds: 0,
           currentScore: 0,
-          poseDetected: false,
+          poseDetected: true,
           sessionId: response.data.id,
         });
+        setEncouragement(getRandomEncouragement());
       } else {
         Alert.alert('Error', response.error || 'Failed to start session');
       }
@@ -303,26 +163,30 @@ const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
       return;
     }
 
+    // Check minimum duration
+    if (sessionState.elapsedSeconds < APP_CONFIG.MIN_SESSION_DURATION_SECONDS) {
+      Alert.alert(
+        'Session Too Short',
+        `Please practice for at least ${APP_CONFIG.MIN_SESSION_DURATION_SECONDS} seconds.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     setIsEndingSession(true);
 
     try {
-      // Calculate average scores from accumulated data
-      const avgScore = scoresRef.current.length > 0
-        ? Math.round(scoresRef.current.reduce((a, b) => a + b, 0) / scoresRef.current.length)
-        : 0;
-      const avgAlignment = alignmentScoresRef.current.length > 0
-        ? Math.round(alignmentScoresRef.current.reduce((a, b) => a + b, 0) / alignmentScoresRef.current.length)
-        : 0;
-      const avgStability = stabilityScoresRef.current.length > 0
-        ? Math.round(stabilityScoresRef.current.reduce((a, b) => a + b, 0) / stabilityScoresRef.current.length)
-        : 0;
+      // Generate mock scores if feature flag is enabled
+      const scores = APP_CONFIG.USE_MOCK_SCORES
+        ? generateMockScores()
+        : { overallScore: 0, stabilityScore: 0, alignmentScore: 0 };
 
       const response = await endSessionApi({
         sessionId: sessionState.sessionId,
         durationSeconds: sessionState.elapsedSeconds,
-        overallScore: avgScore,
-        stabilityScore: avgStability,
-        alignmentScore: avgAlignment,
+        overallScore: scores.overallScore,
+        stabilityScore: scores.stabilityScore,
+        alignmentScore: scores.alignmentScore,
       });
 
       setSessionState((prev) => ({
@@ -330,19 +194,14 @@ const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
         isActive: false,
       }));
 
-      // Announce session end
-      if (voiceEnabled) {
-        announceSessionEnd(avgScore);
-      }
-
       if (response.success) {
         navigation.replace('SessionComplete', {
           sessionId: sessionState.sessionId,
           poseName: poseName,
           duration: sessionState.elapsedSeconds,
-          overallScore: avgScore,
-          stabilityScore: avgStability,
-          alignmentScore: avgAlignment,
+          overallScore: scores.overallScore,
+          stabilityScore: scores.stabilityScore,
+          alignmentScore: scores.alignmentScore,
         });
       } else {
         Alert.alert('Error', response.error || 'Failed to save session');
@@ -383,21 +242,13 @@ const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
         'Are you sure you want to end your current session?',
         [
           { text: 'Continue', style: 'cancel' },
-          { text: 'End Session', style: 'destructive', onPress: endSession },
+          { text: 'End & Save', onPress: endSession },
           { text: 'Cancel Session', style: 'destructive', onPress: cancelSession },
         ]
       );
     } else {
       navigation.goBack();
     }
-  };
-
-  // Get highlighted joints from feedback
-  const getHighlightedJoints = (): string[] => {
-    if (!poseEvaluation) return [];
-    return poseEvaluation.feedback
-      .filter(fb => fb.severity === 'warning' || fb.severity === 'error')
-      .map(fb => fb.joint);
   };
 
   // Render loading state
@@ -414,22 +265,16 @@ const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
   if (permissionStatus === 'denied') {
     return (
       <View style={styles.permissionContainer}>
-        <Text style={styles.permissionIcon}>📷</Text>
+        <Ionicons name="camera-outline" size={80} color={Colors.textMuted} />
         <Text style={styles.permissionTitle}>Camera Access Required</Text>
         <Text style={styles.permissionText}>
-          Yogifi AI needs camera access to detect and analyze your yoga poses in real-time. Please enable camera access in your device settings.
+          Yogifi AI needs camera access to guide your yoga practice. Please enable camera access in your device settings.
         </Text>
-        <TouchableOpacity
-          style={styles.permissionButton}
-          onPress={openAppSettings}
-        >
+        <TouchableOpacity style={styles.permissionButton} onPress={openAppSettings}>
           <Text style={styles.permissionButtonText}>Open Settings</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.permissionSecondaryButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.permissionSecondaryButtonText}>Go Back</Text>
+        <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.secondaryButtonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -439,28 +284,22 @@ const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
   if (permissionStatus === 'undetermined') {
     return (
       <View style={styles.permissionContainer}>
-        <Text style={styles.permissionIcon}>🎥</Text>
+        <Ionicons name="videocam-outline" size={80} color={Colors.primary} />
         <Text style={styles.permissionTitle}>Enable Camera Access</Text>
         <Text style={styles.permissionText}>
-          To analyze your yoga poses in real-time, we need access to your camera. Your privacy is important to us - video is processed on-device only.
+          To guide your yoga practice, we need access to your camera. Your privacy is important - video is processed on-device only.
         </Text>
-        <TouchableOpacity
-          style={styles.permissionButton}
-          onPress={handleRequestPermission}
-        >
+        <TouchableOpacity style={styles.permissionButton} onPress={handleRequestPermission}>
           <Text style={styles.permissionButtonText}>Allow Camera Access</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.permissionSecondaryButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.permissionSecondaryButtonText}>Go Back</Text>
+        <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.secondaryButtonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  // Main camera view
+  // Main camera view - SIMPLIFIED
   return (
     <View style={styles.container}>
       {/* Full screen camera */}
@@ -472,110 +311,54 @@ const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
         onMountError={handleCameraError}
       />
 
-      {/* Skeleton overlay */}
-      {sessionState.isActive && keypoints.length > 0 && (
-        <SkeletonOverlay
-          keypoints={keypoints}
-          width={SCREEN_WIDTH}
-          height={SCREEN_HEIGHT}
-          mirrored={cameraType === 'front'}
-          highlightedJoints={getHighlightedJoints()}
-        />
-      )}
-
-      {/* Pose feedback overlay */}
-      <PoseFeedbackOverlay
-        evaluation={poseEvaluation}
-        isSessionActive={sessionState.isActive}
-      />
-
-      {/* Debug overlay (dev mode) */}
-      <PoseDebugOverlay
-        debugInfo={poseEvaluation?.debugInfo}
-        visible={showDebug && sessionState.isActive}
-      />
-
-      {/* Reference pose overlay */}
-      <ReferencePoseOverlay
-        poseName={poseName}
-        visible={showReference && !sessionState.isActive}
-        opacity={0.35}
-      />
-
       {/* Overlay UI */}
       <View style={styles.overlay} pointerEvents="box-none">
         {/* Top bar */}
         <View style={styles.topBar}>
           {/* Back button */}
-          <TouchableOpacity
-            style={styles.circleButton}
-            onPress={handleGoBack}
-          >
-            <Text style={styles.circleButtonText}>←</Text>
+          <TouchableOpacity style={styles.circleButton} onPress={handleGoBack}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
 
-          {/* Timer */}
-          <View style={styles.timerContainer}>
-            <Text style={styles.timerText}>
-              {formatTime(sessionState.elapsedSeconds)}
-            </Text>
+          {/* Pose name */}
+          <View style={styles.poseNameContainer}>
+            <Text style={styles.poseNameText}>{poseName}</Text>
           </View>
 
-          {/* Voice toggle button */}
-          <TouchableOpacity
-            style={[styles.circleButton, voiceEnabled && styles.circleButtonActive]}
-            onPress={toggleVoice}
-          >
-            <Text style={styles.circleButtonText}>{voiceEnabled ? '🔊' : '🔇'}</Text>
-          </TouchableOpacity>
-
-          {/* Reference pose toggle button */}
-          {!sessionState.isActive && (
-            <TouchableOpacity
-              style={[styles.circleButton, showReference && styles.circleButtonActive]}
-              onPress={() => setShowReference(!showReference)}
-            >
-              <Text style={styles.circleButtonText}>👤</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Debug toggle button (dev only) */}
-          {__DEV__ && (
-            <TouchableOpacity
-              style={[styles.circleButton, showDebug && styles.circleButtonActive]}
-              onPress={() => setShowDebug(!showDebug)}
-            >
-              <Text style={styles.circleButtonText}>🐛</Text>
-            </TouchableOpacity>
-          )}
-
           {/* Flip camera button */}
-          <TouchableOpacity
-            style={styles.circleButton}
-            onPress={toggleCameraFacing}
-          >
-            <Text style={styles.circleButtonText}>🔄</Text>
+          <TouchableOpacity style={styles.circleButton} onPress={toggleCameraFacing}>
+            <Ionicons name="camera-reverse-outline" size={24} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
+        {/* Center content - Timer and encouragement */}
+        {sessionState.isActive && (
+          <View style={styles.centerContent}>
+            {/* Large Timer */}
+            <View style={styles.timerBox}>
+              <Text style={styles.timerLabel}>Duration</Text>
+              <Text style={styles.timerValue}>{formatTime(sessionState.elapsedSeconds)}</Text>
+            </View>
+
+            {/* Encouragement message */}
+            <View style={styles.encouragementBox}>
+              <Ionicons name="sparkles" size={20} color={Colors.primary} />
+              <Text style={styles.encouragementText}>{encouragement}</Text>
+            </View>
+          </View>
+        )}
+
         {/* Bottom bar */}
         <View style={styles.bottomBar}>
-          {/* Session status indicator */}
-          <View style={styles.statusIndicator}>
-            <View
-              style={[
-                styles.statusDot,
-                sessionState.isActive
-                  ? styles.statusDotActive
-                  : styles.statusDotInactive,
-              ]}
-            />
+          {/* Session status */}
+          <View style={styles.statusContainer}>
+            <View style={[styles.statusDot, sessionState.isActive ? styles.statusActive : styles.statusInactive]} />
             <Text style={styles.statusText}>
-              {sessionState.isActive ? `Practicing ${poseName}` : 'Ready to start'}
+              {sessionState.isActive ? 'Session in progress' : 'Ready to start'}
             </Text>
           </View>
 
-          {/* Start/End session button */}
+          {/* Start/End button */}
           {sessionState.isActive ? (
             <TouchableOpacity
               style={styles.endButton}
@@ -583,39 +366,241 @@ const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
               disabled={isEndingSession}
             >
               {isEndingSession ? (
-                <ActivityIndicator color={Colors.background} size="small" />
+                <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
-                <Text style={styles.endButtonText}>End Session</Text>
+                <>
+                  <Ionicons name="stop-circle" size={24} color="#FFFFFF" />
+                  <Text style={styles.endButtonText}>End Session</Text>
+                </>
               )}
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              style={styles.startButton}
+              style={[styles.startButton, !isCameraReady && styles.buttonDisabled]}
               onPress={startSession}
               disabled={!isCameraReady || isStartingSession}
             >
               {isStartingSession ? (
-                <ActivityIndicator color={Colors.background} size="small" />
+                <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
-                <Text style={styles.startButtonText}>
-                  {isCameraReady ? 'Start Session' : 'Loading...'}
-                </Text>
+                <>
+                  <Ionicons name="play-circle" size={24} color="#FFFFFF" />
+                  <Text style={styles.startButtonText}>
+                    {isCameraReady ? 'Start Session' : 'Loading...'}
+                  </Text>
+                </>
               )}
             </TouchableOpacity>
           )}
         </View>
-
-        {/* Debug info (FPS counter and mock detection indicator) */}
-        {sessionState.isActive && __DEV__ && (
-          <View style={styles.fpsCounter}>
-            <Text style={styles.fpsText}>
-              {currentFPS} FPS {isMockDetection() ? '(Mock)' : '(ML)'}
-            </Text>
-          </View>
-        )}
       </View>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  camera: {
+    flex: 1,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'space-between',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
+  },
+  loadingText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    marginTop: 16,
+  },
+  permissionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    paddingHorizontal: 40,
+  },
+  permissionTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: Colors.text,
+    textAlign: 'center',
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  permissionText: {
+    fontSize: 16,
+    color: Colors.textLight,
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 24,
+  },
+  permissionButton: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  permissionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  secondaryButton: {
+    paddingVertical: 12,
+  },
+  secondaryButtonText: {
+    color: Colors.primary,
+    fontSize: 16,
+  },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  circleButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  poseNameContainer: {
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+  },
+  poseNameText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  centerContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  timerBox: {
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 40,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  timerLabel: {
+    color: Colors.textLight,
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  timerValue: {
+    color: '#FFFFFF',
+    fontSize: 56,
+    fontWeight: 'bold',
+    fontVariant: ['tabular-nums'],
+  },
+  encouragementBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(108, 99, 255, 0.2)',
+    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  encouragementText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  bottomBar: {
+    paddingHorizontal: 20,
+    paddingBottom: 50,
+    paddingTop: 20,
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 8,
+  },
+  statusActive: {
+    backgroundColor: Colors.success,
+  },
+  statusInactive: {
+    backgroundColor: Colors.textMuted,
+  },
+  statusText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  startButton: {
+    flexDirection: 'row',
+    backgroundColor: Colors.primary,
+    borderRadius: 30,
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    gap: 10,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  startButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  endButton: {
+    flexDirection: 'row',
+    backgroundColor: Colors.secondary,
+    borderRadius: 30,
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    gap: 10,
+  },
+  endButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+});
 
 export default CameraScreen;

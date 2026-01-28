@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,15 +7,26 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, Session } from '../types';
 import { getSessionHistoryApi } from '../services/api';
 import Colors from '../constants/colors';
+import { APP_CONFIG } from '../constants/config';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'History'>;
+
+type SortOption = 'recent' | 'score' | 'duration';
+type FilterOption = 'all' | 'excellent' | 'good' | 'needsWork';
+
+interface GroupedSession {
+  title: string;
+  data: Session[];
+}
 
 const HistoryScreen: React.FC<Props> = ({ navigation }) => {
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -25,7 +36,13 @@ const HistoryScreen: React.FC<Props> = ({ navigation }) => {
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const PAGE_SIZE = 20;
+  // Filter and sort state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>('recent');
+  const [filterBy, setFilterBy] = useState<FilterOption>('all');
+  const [showFilters, setShowFilters] = useState(false);
+
+  const PAGE_SIZE = 50; // Load more at once for client-side filtering
 
   const fetchSessions = async (offset: number = 0, append: boolean = false) => {
     if (offset === 0) {
@@ -79,24 +96,92 @@ const HistoryScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  const formatDate = (dateString: string | null | undefined): string => {
-    if (!dateString) return 'Unknown date';
-    const date = new Date(dateString);
+  const handleHaptic = () => {
+    if (APP_CONFIG.ENABLE_HAPTIC_FEEDBACK) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  // Filter and sort sessions
+  const filteredAndSortedSessions = useMemo(() => {
+    let result = [...sessions];
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (s) => s.poseName?.toLowerCase().includes(query)
+      );
+    }
+
+    // Filter by score range
+    switch (filterBy) {
+      case 'excellent':
+        result = result.filter((s) => (s.overallScore ?? 0) >= 80);
+        break;
+      case 'good':
+        result = result.filter(
+          (s) => (s.overallScore ?? 0) >= 60 && (s.overallScore ?? 0) < 80
+        );
+        break;
+      case 'needsWork':
+        result = result.filter((s) => (s.overallScore ?? 0) < 60);
+        break;
+    }
+
+    // Sort
+    switch (sortBy) {
+      case 'score':
+        result.sort((a, b) => (b.overallScore ?? 0) - (a.overallScore ?? 0));
+        break;
+      case 'duration':
+        result.sort((a, b) => (b.durationSeconds ?? 0) - (a.durationSeconds ?? 0));
+        break;
+      case 'recent':
+      default:
+        result.sort(
+          (a, b) =>
+            new Date(b.createdAt ?? 0).getTime() -
+            new Date(a.createdAt ?? 0).getTime()
+        );
+    }
+
+    return result;
+  }, [sessions, searchQuery, sortBy, filterBy]);
+
+  // Group sessions by date
+  const groupedSessions = useMemo(() => {
+    const groups: { [key: string]: Session[] } = {};
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
+    const thisWeek = new Date(today);
+    thisWeek.setDate(thisWeek.getDate() - 7);
 
-    if (date.toDateString() === today.toDateString()) {
-      return 'Today';
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday';
-    }
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined,
+    filteredAndSortedSessions.forEach((session) => {
+      const date = new Date(session.createdAt ?? 0);
+      date.setHours(0, 0, 0, 0);
+
+      let key: string;
+      if (date.getTime() === today.getTime()) {
+        key = 'Today';
+      } else if (date.getTime() === yesterday.getTime()) {
+        key = 'Yesterday';
+      } else if (date >= thisWeek) {
+        key = 'This Week';
+      } else {
+        key = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      }
+
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(session);
     });
-  };
+
+    return Object.entries(groups).map(([title, data]) => ({ title, data }));
+  }, [filteredAndSortedSessions]);
 
   const formatDuration = (seconds: number | null | undefined): string => {
     if (!seconds) return '--:--';
@@ -112,29 +197,156 @@ const HistoryScreen: React.FC<Props> = ({ navigation }) => {
     return Colors.error;
   };
 
-  const renderSessionItem = ({ item }: { item: Session }) => (
-    <TouchableOpacity
-      style={styles.sessionCard}
-      onPress={() => navigation.navigate('SessionDetails', { sessionId: item.id })}
-    >
-      <View style={styles.sessionIcon}>
-        <Ionicons name="fitness" size={24} color={Colors.primary} />
+  const getScoreBadgeStyle = (score: number | null | undefined) => {
+    if (!score) return { bg: Colors.textMuted + '20', text: Colors.textMuted };
+    if (score >= 80) return { bg: Colors.success + '20', text: Colors.success };
+    if (score >= 60) return { bg: Colors.warning + '20', text: Colors.warning };
+    return { bg: Colors.error + '20', text: Colors.error };
+  };
+
+  const renderSectionHeader = (title: string) => (
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <Text style={styles.sectionCount}>
+        {groupedSessions.find((g) => g.title === title)?.data.length ?? 0} sessions
+      </Text>
+    </View>
+  );
+
+  const renderSessionItem = ({ item }: { item: Session }) => {
+    const scoreBadge = getScoreBadgeStyle(item.overallScore);
+
+    return (
+      <TouchableOpacity
+        style={styles.sessionCard}
+        onPress={() => {
+          handleHaptic();
+          navigation.navigate('SessionDetails', { sessionId: item.id });
+        }}
+        activeOpacity={0.7}
+      >
+        <View style={styles.sessionIcon}>
+          <Ionicons name="fitness" size={22} color={Colors.primary} />
+        </View>
+        <View style={styles.sessionInfo}>
+          <Text style={styles.sessionPose}>{item.poseName || 'Yoga Session'}</Text>
+          <View style={styles.sessionMeta}>
+            <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
+            <Text style={styles.sessionDuration}>{formatDuration(item.durationSeconds)}</Text>
+          </View>
+        </View>
+        <View style={[styles.scoreBadge, { backgroundColor: scoreBadge.bg }]}>
+          <Text style={[styles.scoreValue, { color: scoreBadge.text }]}>
+            {item.overallScore ?? '--'}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+      </TouchableOpacity>
+    );
+  };
+
+  const renderFilters = () => (
+    <View style={styles.filtersContainer}>
+      {/* Search */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color={Colors.textMuted} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by pose name..."
+          placeholderTextColor={Colors.textMuted}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Ionicons name="close-circle" size={20} color={Colors.textMuted} />
+          </TouchableOpacity>
+        )}
       </View>
-      <View style={styles.sessionInfo}>
-        <Text style={styles.sessionPose}>{item.poseName || 'Yoga Session'}</Text>
-        <View style={styles.sessionMeta}>
-          <Text style={styles.sessionDate}>{formatDate(item.createdAt)}</Text>
-          <Text style={styles.sessionDot}>•</Text>
-          <Text style={styles.sessionDuration}>{formatDuration(item.durationSeconds)}</Text>
+
+      {/* Filter pills */}
+      <View style={styles.filterRow}>
+        <TouchableOpacity
+          style={styles.filterToggle}
+          onPress={() => {
+            handleHaptic();
+            setShowFilters(!showFilters);
+          }}
+        >
+          <Ionicons name="filter" size={18} color={Colors.primary} />
+          <Text style={styles.filterToggleText}>Filters</Text>
+          <Ionicons
+            name={showFilters ? 'chevron-up' : 'chevron-down'}
+            size={16}
+            color={Colors.primary}
+          />
+        </TouchableOpacity>
+
+        {/* Sort options */}
+        <View style={styles.sortPills}>
+          {(['recent', 'score', 'duration'] as SortOption[]).map((option) => (
+            <TouchableOpacity
+              key={option}
+              style={[styles.sortPill, sortBy === option && styles.sortPillActive]}
+              onPress={() => {
+                handleHaptic();
+                setSortBy(option);
+              }}
+            >
+              <Text
+                style={[
+                  styles.sortPillText,
+                  sortBy === option && styles.sortPillTextActive,
+                ]}
+              >
+                {option === 'recent' ? 'Recent' : option === 'score' ? 'Score' : 'Duration'}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
-      <View style={styles.sessionScore}>
-        <Text style={[styles.scoreValue, { color: getScoreColor(item.overallScore) }]}>
-          {item.overallScore ?? '--'}
-        </Text>
-      </View>
-      <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
-    </TouchableOpacity>
+
+      {/* Expanded filters */}
+      {showFilters && (
+        <View style={styles.expandedFilters}>
+          <Text style={styles.filterLabel}>Filter by Score</Text>
+          <View style={styles.filterPills}>
+            {[
+              { key: 'all', label: 'All' },
+              { key: 'excellent', label: '80+' },
+              { key: 'good', label: '60-79' },
+              { key: 'needsWork', label: '<60' },
+            ].map((option) => (
+              <TouchableOpacity
+                key={option.key}
+                style={[
+                  styles.filterPill,
+                  filterBy === option.key && styles.filterPillActive,
+                ]}
+                onPress={() => {
+                  handleHaptic();
+                  setFilterBy(option.key as FilterOption);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.filterPillText,
+                    filterBy === option.key && styles.filterPillTextActive,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Results count */}
+      <Text style={styles.resultsCount}>
+        {filteredAndSortedSessions.length} session{filteredAndSortedSessions.length !== 1 ? 's' : ''} found
+      </Text>
+    </View>
   );
 
   const renderFooter = () => {
@@ -177,8 +389,10 @@ const HistoryScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.placeholder} />
       </View>
 
+      {renderFilters()}
+
       <FlatList
-        data={sessions}
+        data={filteredAndSortedSessions}
         renderItem={renderSessionItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
@@ -196,16 +410,22 @@ const HistoryScreen: React.FC<Props> = ({ navigation }) => {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="calendar-outline" size={64} color={Colors.textMuted} />
-            <Text style={styles.emptyTitle}>No sessions yet</Text>
-            <Text style={styles.emptyText}>
-              Complete your first yoga session to see it here
+            <Text style={styles.emptyTitle}>
+              {searchQuery || filterBy !== 'all' ? 'No matching sessions' : 'No sessions yet'}
             </Text>
-            <TouchableOpacity
-              style={styles.startButton}
-              onPress={() => navigation.navigate('PoseSelection')}
-            >
-              <Text style={styles.startButtonText}>Start Practicing</Text>
-            </TouchableOpacity>
+            <Text style={styles.emptyText}>
+              {searchQuery || filterBy !== 'all'
+                ? 'Try adjusting your filters'
+                : 'Complete your first yoga session to see it here'}
+            </Text>
+            {!searchQuery && filterBy === 'all' && (
+              <TouchableOpacity
+                style={styles.startButton}
+                onPress={() => navigation.navigate('PoseSelection')}
+              >
+                <Text style={styles.startButtonText}>Start Practicing</Text>
+              </TouchableOpacity>
+            )}
           </View>
         }
       />
@@ -247,21 +467,134 @@ const styles = StyleSheet.create({
   placeholder: {
     width: 40,
   },
+  filtersContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: Colors.text,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  filterToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  filterToggleText: {
+    fontSize: 14,
+    color: Colors.primary,
+    fontWeight: '500',
+  },
+  sortPills: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  sortPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: Colors.cardBackground,
+  },
+  sortPillActive: {
+    backgroundColor: Colors.primary,
+  },
+  sortPillText: {
+    fontSize: 13,
+    color: Colors.textLight,
+  },
+  sortPillTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '500',
+  },
+  expandedFilters: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+  },
+  filterLabel: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  filterPills: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  filterPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  filterPillActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  filterPillText: {
+    fontSize: 14,
+    color: Colors.textLight,
+  },
+  filterPillTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '500',
+  },
+  resultsCount: {
+    fontSize: 13,
+    color: Colors.textMuted,
+    marginTop: 4,
+  },
   listContent: {
     padding: 16,
+    paddingTop: 0,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  sectionCount: {
+    fontSize: 13,
+    color: Colors.textMuted,
   },
   sessionCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.cardBackground,
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    padding: 14,
+    marginBottom: 10,
   },
   sessionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: Colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
@@ -279,26 +612,21 @@ const styles = StyleSheet.create({
   sessionMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  sessionDate: {
-    fontSize: 13,
-    color: Colors.textMuted,
-  },
-  sessionDot: {
-    fontSize: 13,
-    color: Colors.textMuted,
-    marginHorizontal: 6,
+    gap: 4,
   },
   sessionDuration: {
     fontSize: 13,
     color: Colors.textMuted,
   },
-  sessionScore: {
+  scoreBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
     marginRight: 8,
   },
   scoreValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '700',
   },
   loadingText: {
     marginTop: 12,

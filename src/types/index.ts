@@ -3,15 +3,18 @@ export type RootStackParamList = {
   Splash: undefined;
   Login: undefined;
   Register: undefined;
+  Onboarding: undefined;
   Home: undefined;
   PoseSelection: undefined;
   PoseInstruction: PoseInstructionParams;
   CameraSetup: CameraSetupParams | undefined;
   Camera: CameraParams | undefined;
   SessionComplete: SessionCompleteParams;
+  AICoach: AICoachParams;
   History: undefined;
   SessionDetails: SessionDetailsParams;
   Profile: undefined;
+  Settings: undefined;
 };
 
 // Pose Instruction screen params
@@ -46,6 +49,14 @@ export interface SessionCompleteParams {
 // Session Details screen params
 export interface SessionDetailsParams {
   sessionId: string;
+}
+
+// AI Coach screen params
+export interface AICoachParams {
+  sessionId: string;
+  poseName: string;
+  overallScore: number;
+  duration: number;
 }
 
 // Camera permission status

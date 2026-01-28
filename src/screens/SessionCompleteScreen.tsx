@@ -1,15 +1,23 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  Animated,
+  Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import ConfettiCannon from 'react-native-confetti-cannon';
+import * as Haptics from 'expo-haptics';
+import * as Sharing from 'expo-sharing';
+import ViewShot, { captureRef } from 'react-native-view-shot';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import Colors from '../constants/colors';
+import { APP_CONFIG } from '../constants/config';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SessionComplete'>;
 
@@ -23,10 +31,58 @@ const SessionCompleteScreen: React.FC<Props> = ({ navigation, route }) => {
     alignmentScore,
   } = route.params;
 
+  const confettiRef = useRef<any>(null);
+  const shareCardRef = useRef<any>(null);
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const showConfetti = overallScore >= APP_CONFIG.CONFETTI_SCORE_THRESHOLD;
+
+  useEffect(() => {
+    // Trigger haptic feedback
+    if (APP_CONFIG.ENABLE_HAPTIC_FEEDBACK) {
+      Haptics.notificationAsync(
+        showConfetti
+          ? Haptics.NotificationFeedbackType.Success
+          : Haptics.NotificationFeedbackType.Warning
+      );
+    }
+
+    // Animate score in
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 1.2,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Fade in content
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 600,
+      delay: 300,
+      useNativeDriver: true,
+    }).start();
+
+    // Trigger confetti for good scores
+    if (showConfetti && confettiRef.current) {
+      setTimeout(() => {
+        confettiRef.current?.start();
+      }, 500);
+    }
+  }, []);
+
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    if (mins === 0) return `${secs}s`;
+    return `${mins}m ${secs}s`;
   };
 
   const getScoreColor = (score: number): string => {
@@ -35,109 +91,205 @@ const SessionCompleteScreen: React.FC<Props> = ({ navigation, route }) => {
     return Colors.error;
   };
 
+  const getScoreEmoji = (score: number): string => {
+    if (score >= 90) return '🌟';
+    if (score >= 80) return '🎉';
+    if (score >= 70) return '💪';
+    if (score >= 60) return '👍';
+    return '🧘';
+  };
+
   const getScoreLabel = (score: number): string => {
-    if (score >= 90) return 'Excellent!';
-    if (score >= 80) return 'Great job!';
-    if (score >= 70) return 'Good work!';
-    if (score >= 60) return 'Nice effort!';
+    if (score >= 90) return 'Outstanding!';
+    if (score >= 80) return 'Excellent!';
+    if (score >= 70) return 'Great job!';
+    if (score >= 60) return 'Good effort!';
     return 'Keep practicing!';
   };
 
+  const handleAICoach = () => {
+    if (APP_CONFIG.ENABLE_HAPTIC_FEEDBACK) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    navigation.navigate('AICoach', {
+      sessionId,
+      poseName,
+      overallScore,
+      duration,
+    });
+  };
+
   const handleGoHome = () => {
+    if (APP_CONFIG.ENABLE_HAPTIC_FEEDBACK) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
     navigation.replace('Home');
   };
 
-  const handleViewHistory = () => {
-    navigation.replace('History');
-  };
-
   const handlePracticeAgain = () => {
+    if (APP_CONFIG.ENABLE_HAPTIC_FEEDBACK) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
     navigation.replace('PoseSelection');
   };
 
+  const handleViewDetails = () => {
+    if (APP_CONFIG.ENABLE_HAPTIC_FEEDBACK) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    navigation.navigate('SessionDetails', { sessionId });
+  };
+
+  const handleShare = async () => {
+    if (APP_CONFIG.ENABLE_HAPTIC_FEEDBACK) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    try {
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert('Sharing not available', 'Sharing is not available on this device.');
+        return;
+      }
+
+      if (shareCardRef.current) {
+        const uri = await captureRef(shareCardRef, {
+          format: 'png',
+          quality: 1,
+        });
+        await Sharing.shareAsync(uri, {
+          mimeType: 'image/png',
+          dialogTitle: 'Share your yoga score',
+        });
+      }
+    } catch (error) {
+      console.log('Error sharing:', error);
+      Alert.alert('Error', 'Could not share your score. Please try again.');
+    }
+  };
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      <View style={styles.header}>
-        <View style={styles.successIcon}>
-          <Ionicons name="checkmark-circle" size={80} color={Colors.success} />
-        </View>
-        <Text style={styles.title}>Session Complete!</Text>
-        <Text style={styles.poseName}>{poseName}</Text>
-      </View>
+    <View style={styles.container}>
+      {/* Confetti for good scores */}
+      {showConfetti && (
+        <ConfettiCannon
+          ref={confettiRef}
+          count={150}
+          origin={{ x: -10, y: 0 }}
+          autoStart={false}
+          fadeOut
+          fallSpeed={3000}
+          colors={[Colors.primary, Colors.secondary, Colors.success, '#FFD700', '#FF69B4']}
+        />
+      )}
 
-      <View style={styles.scoreCard}>
-        <View style={styles.mainScore}>
-          <Text style={[styles.scoreValue, { color: getScoreColor(overallScore) }]}>
-            {overallScore}
-          </Text>
-          <Text style={styles.scoreLabel}>{getScoreLabel(overallScore)}</Text>
-        </View>
-
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Ionicons name="time-outline" size={24} color={Colors.primary} />
-            <Text style={styles.statValue}>{formatDuration(duration)}</Text>
-            <Text style={styles.statLabel}>Duration</Text>
-          </View>
-
-          {stabilityScore !== undefined && (
-            <View style={styles.statItem}>
-              <Ionicons name="body-outline" size={24} color={Colors.secondary} />
-              <Text style={styles.statValue}>{stabilityScore}</Text>
-              <Text style={styles.statLabel}>Stability</Text>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Shareable Score Card */}
+        <ViewShot ref={shareCardRef} options={{ format: 'png', quality: 1 }}>
+          <View style={styles.shareableCard}>
+            {/* Header with emoji and title */}
+            <View style={styles.header}>
+              <Text style={styles.emoji}>{getScoreEmoji(overallScore)}</Text>
+              <Text style={styles.title}>Session Complete!</Text>
+              <Text style={styles.poseName}>{poseName}</Text>
             </View>
-          )}
 
-          {alignmentScore !== undefined && (
-            <View style={styles.statItem}>
-              <Ionicons name="resize-outline" size={24} color={Colors.warning} />
-              <Text style={styles.statValue}>{alignmentScore}</Text>
-              <Text style={styles.statLabel}>Alignment</Text>
+            {/* Main Score Card */}
+            <Animated.View
+              style={[
+                styles.scoreCard,
+                { transform: [{ scale: scaleAnim }] },
+              ]}
+            >
+              <View style={styles.scoreCircle}>
+                <Text style={[styles.scoreValue, { color: getScoreColor(overallScore) }]}>
+                  {overallScore}
+                </Text>
+                <Text style={styles.scoreMax}>/100</Text>
+              </View>
+              <Text style={styles.scoreLabel}>{getScoreLabel(overallScore)}</Text>
+            </Animated.View>
+
+            {/* Stats Row */}
+            <Animated.View style={[styles.statsCard, { opacity: fadeAnim }]}>
+              <View style={styles.statItem}>
+                <Ionicons name="time-outline" size={28} color={Colors.primary} />
+                <Text style={styles.statValue}>{formatDuration(duration)}</Text>
+                <Text style={styles.statLabel}>Duration</Text>
+              </View>
+
+              <View style={styles.statDivider} />
+
+              {stabilityScore !== undefined && (
+                <>
+                  <View style={styles.statItem}>
+                    <Ionicons name="fitness-outline" size={28} color={Colors.secondary} />
+                    <Text style={styles.statValue}>{stabilityScore}</Text>
+                    <Text style={styles.statLabel}>Stability</Text>
+                  </View>
+                  <View style={styles.statDivider} />
+                </>
+              )}
+
+              {alignmentScore !== undefined && (
+                <View style={styles.statItem}>
+                  <Ionicons name="resize-outline" size={28} color={Colors.warning} />
+                  <Text style={styles.statValue}>{alignmentScore}</Text>
+                  <Text style={styles.statLabel}>Alignment</Text>
+                </View>
+              )}
+            </Animated.View>
+
+            {/* Branding for shared image */}
+            <Text style={styles.shareBranding}>Yogifi AI</Text>
+          </View>
+        </ViewShot>
+
+        {/* Action Buttons */}
+        <Animated.View style={[styles.actionButtons, { opacity: fadeAnim }]}>
+          {/* AI Coach Insights - Primary CTA */}
+          <TouchableOpacity style={styles.aiCoachButton} onPress={handleAICoach}>
+            <View style={styles.aiCoachIcon}>
+              <Ionicons name="sparkles" size={24} color="#FFFFFF" />
             </View>
-          )}
-        </View>
-      </View>
-
-      <View style={styles.feedbackCard}>
-        <View style={styles.feedbackHeader}>
-          <Ionicons name="bulb-outline" size={24} color={Colors.warning} />
-          <Text style={styles.feedbackTitle}>Tips for Improvement</Text>
-        </View>
-        <View style={styles.feedbackList}>
-          <View style={styles.feedbackItem}>
-            <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
-            <Text style={styles.feedbackText}>Good overall posture maintained</Text>
-          </View>
-          <View style={styles.feedbackItem}>
-            <Ionicons name="arrow-forward-circle" size={18} color={Colors.primary} />
-            <Text style={styles.feedbackText}>Try holding the pose a bit longer next time</Text>
-          </View>
-          <View style={styles.feedbackItem}>
-            <Ionicons name="arrow-forward-circle" size={18} color={Colors.primary} />
-            <Text style={styles.feedbackText}>Focus on keeping your breath steady</Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.primaryButton} onPress={handlePracticeAgain}>
-          <Ionicons name="refresh" size={20} color={Colors.background} />
-          <Text style={styles.primaryButtonText}>Practice Again</Text>
-        </TouchableOpacity>
-
-        <View style={styles.secondaryButtons}>
-          <TouchableOpacity style={styles.secondaryButton} onPress={handleViewHistory}>
-            <Ionicons name="list" size={20} color={Colors.primary} />
-            <Text style={styles.secondaryButtonText}>History</Text>
+            <View style={styles.aiCoachContent}>
+              <Text style={styles.aiCoachTitle}>AI Coach Insights</Text>
+              <Text style={styles.aiCoachSubtitle}>Get personalized feedback</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#FFFFFF" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.secondaryButton} onPress={handleGoHome}>
-            <Ionicons name="home" size={20} color={Colors.primary} />
-            <Text style={styles.secondaryButtonText}>Home</Text>
+          {/* View Details & Share Row */}
+          <View style={styles.rowButtons}>
+            <TouchableOpacity style={styles.detailsButton} onPress={handleViewDetails}>
+              <Ionicons name="analytics-outline" size={22} color={Colors.primary} />
+              <Text style={styles.detailsButtonText}>View Details</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+              <Ionicons name="share-outline" size={22} color={Colors.success} />
+              <Text style={styles.shareButtonText}>Share Score</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Practice Again */}
+          <TouchableOpacity style={styles.primaryButton} onPress={handlePracticeAgain}>
+            <Ionicons name="refresh" size={22} color="#FFFFFF" />
+            <Text style={styles.primaryButtonText}>Practice Again</Text>
           </TouchableOpacity>
-        </View>
-      </View>
-    </ScrollView>
+
+          {/* Home Button */}
+          <TouchableOpacity style={styles.homeButton} onPress={handleGoHome}>
+            <Ionicons name="home-outline" size={22} color={Colors.textLight} />
+            <Text style={styles.homeButtonText}>Back to Home</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </ScrollView>
+    </View>
   );
 };
 
@@ -146,19 +298,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  scrollView: {
+    flex: 1,
+  },
   scrollContent: {
     paddingBottom: 40,
   },
   header: {
     alignItems: 'center',
     paddingTop: 80,
-    paddingBottom: 32,
+    paddingBottom: 24,
   },
-  successIcon: {
+  emoji: {
+    fontSize: 64,
     marginBottom: 16,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: Colors.text,
     marginBottom: 8,
@@ -168,38 +324,61 @@ const styles = StyleSheet.create({
     color: Colors.textLight,
   },
   scoreCard: {
-    backgroundColor: Colors.cardBackground,
-    marginHorizontal: 20,
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 20,
-  },
-  mainScore: {
     alignItems: 'center',
+    marginHorizontal: 20,
     marginBottom: 24,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 24,
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  scoreCircle: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 8,
   },
   scoreValue: {
-    fontSize: 72,
+    fontSize: 80,
     fontWeight: 'bold',
   },
-  scoreLabel: {
-    fontSize: 18,
-    color: Colors.textLight,
-    marginTop: 4,
+  scoreMax: {
+    fontSize: 24,
+    color: Colors.textMuted,
+    marginLeft: 4,
   },
-  statsRow: {
+  scoreLabel: {
+    fontSize: 20,
+    color: Colors.textLight,
+    fontWeight: '500',
+  },
+  statsCard: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    paddingTop: 20,
+    alignItems: 'center',
+    backgroundColor: Colors.cardBackground,
+    marginHorizontal: 20,
+    borderRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    marginBottom: 32,
   },
   statItem: {
     alignItems: 'center',
+    flex: 1,
+  },
+  statDivider: {
+    width: 1,
+    height: 50,
+    backgroundColor: Colors.border,
   },
   statValue: {
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: '700',
     color: Colors.text,
     marginTop: 8,
   },
@@ -208,74 +387,117 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     marginTop: 4,
   },
-  feedbackCard: {
-    backgroundColor: Colors.warningLight,
-    marginHorizontal: 20,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-  },
-  feedbackHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 8,
-  },
-  feedbackTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  feedbackList: {
+  actionButtons: {
+    paddingHorizontal: 20,
     gap: 12,
   },
-  feedbackItem: {
+  aiCoachButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-  },
-  feedbackText: {
-    flex: 1,
-    fontSize: 14,
-    color: Colors.textLight,
-  },
-  buttonContainer: {
-    paddingHorizontal: 20,
-  },
-  primaryButton: {
     backgroundColor: Colors.primary,
     borderRadius: 16,
-    paddingVertical: 18,
+    padding: 16,
+    marginBottom: 8,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  aiCoachIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  aiCoachContent: {
+    flex: 1,
+  },
+  aiCoachTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  aiCoachSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  shareableCard: {
+    backgroundColor: Colors.background,
+  },
+  shareBranding: {
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.primary,
+    paddingBottom: 16,
+  },
+  rowButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  detailsButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    marginBottom: 16,
-  },
-  primaryButtonText: {
-    color: Colors.background,
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  secondaryButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  secondaryButton: {
-    flex: 1,
     backgroundColor: Colors.cardBackground,
     borderRadius: 12,
     paddingVertical: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     gap: 8,
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  secondaryButtonText: {
+  detailsButtonText: {
+    fontSize: 15,
     color: Colors.primary,
+    fontWeight: '500',
+  },
+  shareButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.successLight,
+    borderRadius: 12,
+    paddingVertical: 14,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: Colors.success + '30',
+  },
+  shareButtonText: {
+    fontSize: 15,
+    color: Colors.success,
+    fontWeight: '500',
+  },
+  primaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.secondary,
+    borderRadius: 12,
+    paddingVertical: 16,
+    gap: 8,
+  },
+  primaryButtonText: {
     fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  homeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    gap: 8,
+  },
+  homeButtonText: {
+    fontSize: 16,
+    color: Colors.textLight,
     fontWeight: '500',
   },
 });

@@ -191,7 +191,10 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
             <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('Settings')}
+          >
             <View style={styles.menuIconContainer}>
               <Ionicons name="settings-outline" size={22} color={Colors.primary} />
             </View>
