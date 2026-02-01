@@ -3,8 +3,8 @@ package com.yogifi.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.filter.CorsFilter;
 
 import java.util.Arrays;
 import java.util.List;
@@ -13,19 +13,22 @@ import java.util.List;
 public class CorsConfig {
 
     @Bean
-    public CorsFilter corsFilter() {
+    public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration corsConfiguration = new CorsConfiguration();
 
-        // Allow all origins for React Native development
-        // In production, replace with specific origins
-        corsConfiguration.setAllowedOrigins(List.of("*"));
+        // Use allowedOriginPatterns to support wildcards with credentials
+        corsConfiguration.setAllowedOriginPatterns(Arrays.asList(
+            "http://localhost:*",
+            "http://127.0.0.1:*",
+            "http://192.168.*.*:*",
+            "http://10.0.2.2:*",
+            "https://*.yogifi.app"
+        ));
 
-        // Allow all HTTP methods
         corsConfiguration.setAllowedMethods(Arrays.asList(
             "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
         ));
 
-        // Allow all headers
         corsConfiguration.setAllowedHeaders(Arrays.asList(
             "Authorization",
             "Content-Type",
@@ -34,18 +37,13 @@ public class CorsConfig {
             "X-Requested-With"
         ));
 
-        // Expose Authorization header for JWT
         corsConfiguration.setExposedHeaders(List.of("Authorization"));
-
-        // Allow credentials
-        corsConfiguration.setAllowCredentials(false);
-
-        // Cache preflight response for 1 hour
+        corsConfiguration.setAllowCredentials(true);
         corsConfiguration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", corsConfiguration);
 
-        return new CorsFilter(source);
+        return source;
     }
 }

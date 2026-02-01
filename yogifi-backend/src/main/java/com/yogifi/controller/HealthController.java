@@ -27,4 +27,17 @@ public class HealthController {
 
         return ResponseEntity.ok(ApiResponse.success(healthData, "Service is healthy"));
     }
+
+    /**
+     * CORS test endpoint
+     * GET /api/test-cors
+     */
+    @GetMapping("/test-cors")
+    public ResponseEntity<ApiResponse<Map<String, String>>> testCors() {
+        Map<String, String> data = new HashMap<>();
+        data.put("message", "CORS is working correctly");
+        data.put("timestamp", String.valueOf(System.currentTimeMillis()));
+
+        return ResponseEntity.ok(ApiResponse.success(data, "CORS test successful"));
+    }
 }

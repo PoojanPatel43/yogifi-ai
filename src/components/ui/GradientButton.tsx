@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Pressable,
   ColorValue,
+  View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../../constants/theme';
@@ -23,37 +24,46 @@ interface GradientButtonProps {
   loading?: boolean;
   icon?: React.ReactNode;
   size?: 'sm' | 'md' | 'lg';
-  variant?: 'filled' | 'outline';
+  variant?: 'primary' | 'accent' | 'dark' | 'outline' | 'filled';
 }
+
+const VARIANT_GRADIENTS: Record<string, readonly string[]> = {
+  primary: theme.gradients.primary,
+  accent: theme.gradients.sunset,
+  dark: theme.gradients.dark,
+  filled: theme.gradients.primary,
+};
 
 const GradientButton: React.FC<GradientButtonProps> = ({
   title,
   onPress,
-  gradient = theme.gradients.primary,
+  gradient,
   style,
   textStyle,
   disabled = false,
   loading = false,
   icon,
   size = 'md',
-  variant = 'filled',
+  variant = 'primary',
 }) => {
   const [pressed, setPressed] = useState(false);
 
+  const resolvedGradient = gradient || VARIANT_GRADIENTS[variant] || theme.gradients.primary;
+
   const sizeStyles = {
-    sm: { paddingVertical: 10, paddingHorizontal: 20 },
-    md: { paddingVertical: 14, paddingHorizontal: 24 },
-    lg: { paddingVertical: 18, paddingHorizontal: 32 },
+    sm: { paddingVertical: 10, paddingHorizontal: 24 },
+    md: { paddingVertical: 16, paddingHorizontal: 32 },
+    lg: { paddingVertical: 20, paddingHorizontal: 40 },
   };
 
   const textSizeStyles = {
-    sm: { fontSize: 14 },
-    md: { fontSize: 16 },
-    lg: { fontSize: 18 },
+    sm: theme.typography.bodySm,
+    md: theme.typography.button,
+    lg: theme.typography.buttonLg,
   };
 
   const scaleStyle = {
-    transform: [{ scale: pressed ? 0.96 : 1 }],
+    transform: [{ scale: pressed ? 0.97 : 1 }],
   };
 
   if (variant === 'outline') {
@@ -73,13 +83,9 @@ const GradientButton: React.FC<GradientButtonProps> = ({
       >
         {icon}
         {loading ? (
-          <ActivityIndicator size="small" color={theme.colors.primary} />
+          <ActivityIndicator size="small" color={theme.colors.text} />
         ) : (
-          <Text style={[
-            styles.outlineText,
-            textSizeStyles[size],
-            textStyle,
-          ]}>
+          <Text style={[styles.outlineText, textSizeStyles[size], textStyle]}>
             {title}
           </Text>
         )}
@@ -87,36 +93,41 @@ const GradientButton: React.FC<GradientButtonProps> = ({
     );
   }
 
+  const isDark = variant === 'dark';
+
   return (
     <Pressable
       onPress={onPress}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
       disabled={disabled || loading}
-      style={[
-        scaleStyle,
-        disabled && styles.disabled,
-        style,
-      ]}
+      style={[scaleStyle, disabled && styles.disabled, style]}
     >
       <LinearGradient
-        colors={disabled ? [theme.colors.textTertiary, theme.colors.textTertiary] as unknown as GradientColors : gradient as unknown as GradientColors}
+        colors={
+          disabled
+            ? ([theme.colors.borderLight, theme.colors.borderLight] as unknown as GradientColors)
+            : (resolvedGradient as unknown as GradientColors)
+        }
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
-        style={[
-          styles.gradient,
-          sizeStyles[size],
-        ]}
+        style={[styles.gradient, sizeStyles[size]]}
       >
         {icon}
         {loading ? (
-          <ActivityIndicator size="small" color={theme.colors.textInverse} />
+          <ActivityIndicator
+            size="small"
+            color={isDark ? theme.colors.textInverse : theme.colors.text}
+          />
         ) : (
-          <Text style={[
-            styles.text,
-            textSizeStyles[size],
-            textStyle,
-          ]}>
+          <Text
+            style={[
+              styles.text,
+              textSizeStyles[size],
+              isDark && styles.textDark,
+              textStyle,
+            ]}
+          >
             {title}
           </Text>
         )}
@@ -130,31 +141,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: theme.radius.md,
+    borderRadius: 9999,
     gap: 8,
   },
   text: {
+    ...theme.typography.button,
+    color: theme.colors.text,
+  },
+  textDark: {
     color: theme.colors.textInverse,
-    fontWeight: '600',
-    letterSpacing: 0.3,
   },
   outlineContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: theme.radius.md,
-    borderWidth: 1.5,
-    borderColor: theme.colors.primary,
+    borderRadius: 9999,
+    borderWidth: 2,
+    borderColor: theme.colors.text,
     gap: 8,
-    backgroundColor: theme.colors.primaryMuted,
+    backgroundColor: 'transparent',
   },
   outlineText: {
-    color: theme.colors.primary,
-    fontWeight: '600',
-    letterSpacing: 0.3,
+    ...theme.typography.button,
+    color: theme.colors.text,
   },
   disabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
 });
 

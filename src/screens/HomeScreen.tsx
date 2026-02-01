@@ -10,12 +10,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Animatable from 'react-native-animatable';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, UserStats, Session } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { getUserStatsApi, getSessionHistoryApi } from '../services/api';
 import { theme } from '../constants/theme';
-import { AnimatedCard, ShimmerLoader, GradientButton } from '../components/ui';
+import { ShimmerLoader, GradientButton } from '../components/ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -27,9 +28,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchData = async (showRefresh = false) => {
-    if (showRefresh) {
-      setIsRefreshing(true);
-    }
+    if (showRefresh) setIsRefreshing(true);
 
     try {
       const [statsResponse, sessionsResponse] = await Promise.all([
@@ -37,13 +36,8 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         getSessionHistoryApi(3, 0),
       ]);
 
-      if (statsResponse.success && statsResponse.data) {
-        setStats(statsResponse.data);
-      }
-
-      if (sessionsResponse.success && sessionsResponse.data) {
-        setRecentSessions(sessionsResponse.data);
-      }
+      if (statsResponse.success && statsResponse.data) setStats(statsResponse.data);
+      if (sessionsResponse.success && sessionsResponse.data) setRecentSessions(sessionsResponse.data);
     } catch (error) {
       console.log('Error fetching home data:', error);
     } finally {
@@ -52,15 +46,8 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchData();
-    }, [])
-  );
+  useEffect(() => { fetchData(); }, []);
+  useFocusEffect(useCallback(() => { fetchData(); }, []));
 
   const getGreeting = (): string => {
     const hour = new Date().getHours();
@@ -76,34 +63,6 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     return theme.colors.accent;
   };
 
-  const renderRecentSession = (session: Session, index: number) => (
-    <AnimatedCard key={session.id} index={index + 4} enterFrom="bottom">
-      <TouchableOpacity
-        style={styles.sessionCard}
-        onPress={() => navigation.navigate('SessionDetails', { sessionId: session.id })}
-        activeOpacity={0.7}
-      >
-        <View style={styles.sessionIcon}>
-          <Ionicons name="fitness" size={22} color={theme.colors.primary} />
-        </View>
-        <View style={styles.sessionInfo}>
-          <Text style={styles.sessionPose}>{session.poseName || 'Yoga Session'}</Text>
-          <Text style={styles.sessionDate}>
-            {session.createdAt ? new Date(session.createdAt).toLocaleDateString() : 'Unknown date'}
-          </Text>
-        </View>
-        <View style={styles.sessionScore}>
-          <Text style={[styles.scoreValue, { color: getScoreColor(session.overallScore) }]}>
-            {session.overallScore ?? '--'}
-          </Text>
-          <Text style={styles.scoreLabel}>score</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={theme.colors.textTertiary} />
-      </TouchableOpacity>
-    </AnimatedCard>
-  );
-
-  // Skeleton Loading State
   if (isLoading) {
     return (
       <View style={styles.container}>
@@ -111,16 +70,16 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           <View>
             <ShimmerLoader width={120} height={16} borderRadius={8} />
             <View style={{ height: 8 }} />
-            <ShimmerLoader width={160} height={28} borderRadius={8} />
+            <ShimmerLoader width={200} height={36} borderRadius={8} />
           </View>
-          <ShimmerLoader width={44} height={44} borderRadius={22} />
+          <ShimmerLoader width={48} height={48} borderRadius={24} />
         </View>
         <View style={{ paddingHorizontal: theme.spacing.screen }}>
-          <ShimmerLoader width="100%" height={160} borderRadius={theme.radius.xl} style={{ marginBottom: theme.spacing['2xl'] }} />
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <ShimmerLoader width="31%" height={110} borderRadius={theme.radius.lg} />
-            <ShimmerLoader width="31%" height={110} borderRadius={theme.radius.lg} />
-            <ShimmerLoader width="31%" height={110} borderRadius={theme.radius.lg} />
+          <ShimmerLoader width="100%" height={180} borderRadius={theme.radius.xl} style={{ marginBottom: 24 }} />
+          <View style={{ flexDirection: 'row', gap: 16 }}>
+            <ShimmerLoader width="31%" height={120} borderRadius={theme.radius.lg} />
+            <ShimmerLoader width="31%" height={120} borderRadius={theme.radius.lg} />
+            <ShimmerLoader width="31%" height={120} borderRadius={theme.radius.lg} />
           </View>
         </View>
       </View>
@@ -136,185 +95,153 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         <RefreshControl
           refreshing={isRefreshing}
           onRefresh={() => fetchData(true)}
-          tintColor={theme.colors.primary}
+          tintColor={theme.colors.primaryDark}
         />
       }
     >
-      {/* Header with Greeting */}
-      <AnimatedCard index={0} enterFrom="left">
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>{getGreeting()},</Text>
-            <Text style={styles.userName}>{user?.name || 'Yogi'}</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.profileButton}
-            onPress={() => navigation.navigate('Profile')}
-            activeOpacity={0.7}
-          >
-            <LinearGradient
-              colors={theme.gradients.primary as any}
-              style={styles.profileGradient}
-            >
-              <Text style={styles.profileInitial}>
-                {(user?.name || 'Y')[0].toUpperCase()}
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
+      {/* Header */}
+      <Animatable.View animation="fadeIn" duration={400} style={styles.header}>
+        <View>
+          <Text style={styles.greeting}>{getGreeting()},</Text>
+          <Text style={styles.userName}>{user?.name || 'Yogi'}</Text>
         </View>
-      </AnimatedCard>
-
-      {/* Hero Card */}
-      <AnimatedCard index={1} enterFrom="scale">
-        <LinearGradient
-          colors={theme.gradients.primaryToSecondary as any}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.heroCard}
+        <TouchableOpacity
+          style={styles.profileButton}
+          onPress={() => navigation.navigate('Profile')}
         >
-          <View style={styles.heroContent}>
-            <Text style={styles.heroTitle}>Ready to Practice?</Text>
-            <Text style={styles.heroSubtitle}>
-              Get real-time AI feedback on your yoga poses
+          <LinearGradient
+            colors={theme.gradients.primary as any}
+            style={styles.profileGradient}
+          >
+            <Text style={styles.profileInitial}>
+              {(user?.name || 'Y')[0].toUpperCase()}
             </Text>
-            <TouchableOpacity
-              style={styles.startButton}
-              onPress={() => navigation.navigate('PoseSelection')}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="play" size={18} color={theme.colors.primary} />
-              <Text style={styles.startButtonText}>Start Practice</Text>
-            </TouchableOpacity>
-          </View>
-          {/* Decorative circle */}
-          <View style={styles.heroDecoration} />
-        </LinearGradient>
-      </AnimatedCard>
+          </LinearGradient>
+        </TouchableOpacity>
+      </Animatable.View>
 
-      {/* Stats Bento Grid */}
-      <View style={styles.statsContainer}>
-        <AnimatedCard index={2} style={styles.statBox}>
-          <View style={[styles.statIconBg, { backgroundColor: theme.colors.primaryMuted }]}>
-            <Ionicons name="calendar" size={20} color={theme.colors.primary} />
-          </View>
-          <Text style={styles.statNumber}>{stats?.totalSessions ?? 0}</Text>
-          <Text style={styles.statLabel}>Sessions</Text>
-          <View style={[styles.statAccent, { backgroundColor: theme.colors.primary }]} />
-        </AnimatedCard>
-
-        <AnimatedCard index={3} style={styles.statBox}>
-          <View style={[styles.statIconBg, { backgroundColor: theme.colors.successMuted }]}>
-            <Ionicons name="time" size={20} color={theme.colors.success} />
-          </View>
-          <Text style={styles.statNumber}>{stats?.totalMinutes ?? 0}</Text>
-          <Text style={styles.statLabel}>Minutes</Text>
-          <View style={[styles.statAccent, { backgroundColor: theme.colors.success }]} />
-        </AnimatedCard>
-
-        <AnimatedCard index={4} style={styles.statBox}>
-          <View style={[styles.statIconBg, { backgroundColor: theme.colors.warningMuted }]}>
-            <Ionicons name="trophy" size={20} color={theme.colors.warning} />
-          </View>
-          <Text style={styles.statNumber}>
+      {/* Stats Bar */}
+      <Animatable.View animation="fadeInUp" delay={100} duration={500} style={styles.statsBar}>
+        <View style={styles.statPill}>
+          <Ionicons name="flame" size={16} color="#ffcdc1" />
+          <Text style={styles.statPillValue}>{stats?.currentStreak ?? 0}</Text>
+          <Text style={styles.statPillLabel}>streak</Text>
+        </View>
+        <View style={styles.statPill}>
+          <Ionicons name="time-outline" size={16} color={theme.colors.secondary} />
+          <Text style={styles.statPillValue}>{stats?.totalMinutes ?? 0}</Text>
+          <Text style={styles.statPillLabel}>min</Text>
+        </View>
+        <View style={styles.statPill}>
+          <Ionicons name="trophy-outline" size={16} color={theme.colors.primary} />
+          <Text style={styles.statPillValue}>
             {stats?.averageScore ? Math.round(stats.averageScore) : '--'}
           </Text>
-          <Text style={styles.statLabel}>Avg Score</Text>
-          <View style={[styles.statAccent, { backgroundColor: theme.colors.warning }]} />
-        </AnimatedCard>
-      </View>
+          <Text style={styles.statPillLabel}>avg</Text>
+        </View>
+      </Animatable.View>
 
-      {/* Streak Card */}
-      {stats?.currentStreak !== undefined && stats.currentStreak > 0 && (
-        <AnimatedCard index={5}>
+      {/* Main Action Card */}
+      <Animatable.View animation="fadeInUp" delay={200} duration={500}>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => navigation.navigate('PoseSelection')}
+        >
           <LinearGradient
-            colors={theme.gradients.sunset as any}
+            colors={theme.gradients.primary as any}
             start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.streakCard}
+            end={{ x: 1, y: 1 }}
+            style={styles.mainActionCard}
           >
-            <Ionicons name="flame" size={28} color={theme.colors.textInverse} />
-            <View style={styles.streakContent}>
-              <Text style={styles.streakNumber}>{stats.currentStreak} day streak!</Text>
-              <Text style={styles.streakSubtext}>Keep it up!</Text>
+            <View style={styles.mainActionContent}>
+              <Text style={styles.mainActionTitle}>Start Yoga Session</Text>
+              <Text style={styles.mainActionSubtitle}>
+                Get real-time AI feedback on your poses
+              </Text>
+              <View style={styles.mainActionBtn}>
+                <Ionicons name="play" size={18} color={theme.colors.text} />
+                <Text style={styles.mainActionBtnText}>Begin Practice</Text>
+              </View>
             </View>
+            <View style={styles.mainActionDecor} />
           </LinearGradient>
-        </AnimatedCard>
-      )}
+        </TouchableOpacity>
+      </Animatable.View>
 
-      {/* Quick Actions */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-      </View>
-      <View style={styles.quickActionsGrid}>
-        <AnimatedCard index={5} enterFrom="bottom" style={styles.quickActionCard}>
-          <TouchableOpacity
-            style={[styles.quickAction, { borderColor: theme.colors.primary }]}
-            onPress={() => navigation.navigate('PoseSelection')}
-            activeOpacity={0.7}
+      {/* Two-Column Actions */}
+      <Animatable.View animation="fadeInUp" delay={300} duration={500} style={styles.twoColRow}>
+        <TouchableOpacity
+          style={styles.twoColCard}
+          onPress={() => navigation.navigate('AIChat')}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={theme.gradients.accent as any}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.twoColGradient}
           >
-            <View style={[styles.quickActionIcon, { backgroundColor: theme.colors.primaryMuted }]}>
-              <Ionicons name="fitness-outline" size={24} color={theme.colors.primaryDark} />
-            </View>
-            <Text style={styles.quickActionTitle}>Start Yoga</Text>
-            <Text style={styles.quickActionDesc}>AI pose guidance</Text>
-          </TouchableOpacity>
-        </AnimatedCard>
+            <Ionicons name="chatbubbles-outline" size={28} color={theme.colors.text} />
+            <Text style={styles.twoColTitle}>AI Coach</Text>
+            <Text style={styles.twoColDesc}>Chat now</Text>
+          </LinearGradient>
+        </TouchableOpacity>
 
-        <AnimatedCard index={6} enterFrom="bottom" style={styles.quickActionCard}>
-          <TouchableOpacity
-            style={[styles.quickAction, { borderColor: theme.colors.secondary }]}
-            onPress={() => navigation.navigate('AIChat')}
-            activeOpacity={0.7}
+        <TouchableOpacity
+          style={styles.twoColCard}
+          onPress={() => navigation.navigate('FitnessPlanner')}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={theme.gradients.success as any}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.twoColGradient}
           >
-            <View style={[styles.quickActionIcon, { backgroundColor: theme.colors.secondaryMuted }]}>
-              <Ionicons name="chatbubbles-outline" size={24} color={theme.colors.secondaryDark} />
-            </View>
-            <Text style={styles.quickActionTitle}>AI Chat</Text>
-            <Text style={styles.quickActionDesc}>Wellness advice</Text>
-          </TouchableOpacity>
-        </AnimatedCard>
-
-        <AnimatedCard index={7} enterFrom="bottom" style={styles.quickActionCard}>
-          <TouchableOpacity
-            style={[styles.quickAction, { borderColor: theme.colors.success }]}
-            onPress={() => navigation.navigate('FitnessPlanner')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.quickActionIcon, { backgroundColor: theme.colors.successMuted }]}>
-              <Ionicons name="barbell-outline" size={24} color={theme.colors.success} />
-            </View>
-            <Text style={styles.quickActionTitle}>Fitness Plan</Text>
-            <Text style={styles.quickActionDesc}>Custom workouts</Text>
-          </TouchableOpacity>
-        </AnimatedCard>
-
-        <AnimatedCard index={8} enterFrom="bottom" style={styles.quickActionCard}>
-          <TouchableOpacity
-            style={[styles.quickAction, { borderColor: theme.colors.accent }]}
-            onPress={() => navigation.navigate('DietPlanner')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.quickActionIcon, { backgroundColor: theme.colors.accentMuted }]}>
-              <Ionicons name="nutrition-outline" size={24} color={theme.colors.accent} />
-            </View>
-            <Text style={styles.quickActionTitle}>Diet Plan</Text>
-            <Text style={styles.quickActionDesc}>Meal planning</Text>
-          </TouchableOpacity>
-        </AnimatedCard>
-      </View>
+            <Ionicons name="barbell-outline" size={28} color={theme.colors.text} />
+            <Text style={styles.twoColTitle}>Plans</Text>
+            <Text style={styles.twoColDesc}>Fitness & Diet</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </Animatable.View>
 
       {/* Recent Sessions */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Recent Sessions</Text>
         <TouchableOpacity onPress={() => navigation.navigate('History')}>
-          <Text style={styles.seeAllText}>See All</Text>
+          <Text style={styles.seeAllText}>View All</Text>
         </TouchableOpacity>
       </View>
 
       {recentSessions.length > 0 ? (
-        recentSessions.map((session, index) => renderRecentSession(session, index))
+        recentSessions.map((session, index) => (
+          <Animatable.View key={session.id} animation="fadeInUp" delay={400 + index * 80} duration={400}>
+            <TouchableOpacity
+              style={styles.sessionCard}
+              onPress={() => navigation.navigate('SessionDetails', { sessionId: session.id })}
+              activeOpacity={0.7}
+            >
+              <View style={styles.sessionIcon}>
+                <Ionicons name="fitness" size={22} color={theme.colors.primaryDark} />
+              </View>
+              <View style={styles.sessionInfo}>
+                <Text style={styles.sessionPose}>{session.poseName || 'Yoga Session'}</Text>
+                <Text style={styles.sessionDate}>
+                  {session.createdAt ? new Date(session.createdAt).toLocaleDateString() : 'Unknown date'}
+                </Text>
+              </View>
+              <View style={styles.sessionScore}>
+                <Text style={[styles.scoreValue, { color: getScoreColor(session.overallScore) }]}>
+                  {session.overallScore ?? '--'}
+                </Text>
+                <Text style={styles.scoreLabel}>score</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={theme.colors.textTertiary} />
+            </TouchableOpacity>
+          </Animatable.View>
+        ))
       ) : (
-        <AnimatedCard index={4}>
+        <Animatable.View animation="fadeIn" delay={400} duration={400}>
           <View style={styles.emptyState}>
             <View style={styles.emptyIconContainer}>
               <Ionicons name="fitness-outline" size={40} color={theme.colors.textTertiary} />
@@ -324,11 +251,12 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             <GradientButton
               title="Begin Practice"
               onPress={() => navigation.navigate('PoseSelection')}
+              variant="accent"
               size="sm"
-              style={{ marginTop: theme.spacing.xl }}
+              style={{ marginTop: 24 }}
             />
           </View>
-        </AnimatedCard>
+        </Animatable.View>
       )}
     </ScrollView>
   );
@@ -342,6 +270,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 40,
   },
+
   // Header
   header: {
     flexDirection: 'row',
@@ -349,151 +278,144 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: theme.spacing.screen,
     paddingTop: 64,
-    paddingBottom: theme.spacing.xl,
+    paddingBottom: 24,
   },
   greeting: {
     ...theme.typography.bodySm,
-    color: theme.colors.textSecondary,
-    marginBottom: 2,
+    color: theme.colors.textTertiary,
+    marginBottom: 4,
   },
   userName: {
-    ...theme.typography.h2,
+    ...theme.typography.h1,
     color: theme.colors.text,
   },
   profileButton: {
     ...theme.shadows.md,
   },
   profileGradient: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
   profileInitial: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: theme.colors.textInverse,
+    ...theme.typography.h4,
+    color: theme.colors.text,
   },
-  // Hero Card
-  heroCard: {
-    marginHorizontal: theme.spacing.screen,
-    borderRadius: theme.radius.xl,
-    padding: theme.spacing['2xl'],
-    marginBottom: theme.spacing['2xl'],
-    overflow: 'hidden',
-    ...theme.shadows.colored(theme.colors.primary),
+
+  // Stats Bar
+  statsBar: {
+    flexDirection: 'row',
+    paddingHorizontal: theme.spacing.screen,
+    gap: 12,
+    marginBottom: 24,
   },
-  heroContent: {
-    zIndex: 1,
-  },
-  heroTitle: {
-    ...theme.typography.h2,
-    color: theme.colors.textInverse,
-    marginBottom: theme.spacing.sm,
-  },
-  heroSubtitle: {
-    ...theme.typography.bodySm,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginBottom: theme.spacing.xl,
-    lineHeight: 20,
-  },
-  startButton: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.md,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+  statPill: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: theme.colors.card,
+    borderRadius: 9999,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+  },
+  statPillValue: {
+    ...theme.typography.bodySmMedium,
+    color: theme.colors.text,
+  },
+  statPillLabel: {
+    ...theme.typography.caption,
+    color: theme.colors.textTertiary,
+    textTransform: 'none',
+    letterSpacing: 0,
+    fontSize: 12,
+  },
+
+  // Main Action Card
+  mainActionCard: {
+    marginHorizontal: theme.spacing.screen,
+    borderRadius: theme.radius['2xl'],
+    padding: 32,
+    marginBottom: 16,
+    overflow: 'hidden',
+    minHeight: 180,
     justifyContent: 'center',
+  },
+  mainActionContent: {
+    zIndex: 1,
+  },
+  mainActionTitle: {
+    ...theme.typography.h2,
+    color: theme.colors.text,
+    marginBottom: 8,
+  },
+  mainActionSubtitle: {
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
+    marginBottom: 24,
+  },
+  mainActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+    borderRadius: 9999,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     gap: 8,
     alignSelf: 'flex-start',
     ...theme.shadows.sm,
   },
-  startButtonText: {
+  mainActionBtnText: {
     ...theme.typography.button,
-    color: theme.colors.primary,
+    color: theme.colors.text,
   },
-  heroDecoration: {
+  mainActionDecor: {
     position: 'absolute',
-    right: -30,
-    top: -30,
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    right: -40,
+    top: -40,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
   },
-  // Stats
-  statsContainer: {
+
+  // Two Column Actions
+  twoColRow: {
     flexDirection: 'row',
     paddingHorizontal: theme.spacing.screen,
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing['2xl'],
+    gap: 12,
+    marginBottom: 32,
   },
-  statBox: {
+  twoColCard: {
     flex: 1,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.lg,
-    alignItems: 'center',
-    overflow: 'hidden',
-    ...theme.shadows.sm,
   },
-  statIconBg: {
-    width: 40,
-    height: 40,
-    borderRadius: theme.radius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: theme.spacing.sm,
+  twoColGradient: {
+    borderRadius: theme.radius.xl,
+    padding: 24,
+    minHeight: 140,
+    justifyContent: 'flex-end',
   },
-  statNumber: {
-    ...theme.typography.h2,
+  twoColTitle: {
+    ...theme.typography.h4,
     color: theme.colors.text,
+    marginTop: 16,
     marginBottom: 2,
   },
-  statLabel: {
-    ...theme.typography.caption,
-    color: theme.colors.textTertiary,
-  },
-  statAccent: {
-    position: 'absolute',
-    top: 0,
-    left: theme.spacing.lg,
-    right: theme.spacing.lg,
-    height: 2,
-    borderRadius: 1,
-  },
-  // Streak
-  streakCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: theme.spacing.screen,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing['2xl'],
-    gap: theme.spacing.md,
-    ...theme.shadows.glow(theme.colors.warning),
-  },
-  streakContent: {
-    flex: 1,
-  },
-  streakNumber: {
-    ...theme.typography.bodyMedium,
-    color: theme.colors.textInverse,
-    fontWeight: '700',
-  },
-  streakSubtext: {
+  twoColDesc: {
     ...theme.typography.bodySm,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: theme.colors.textSecondary,
   },
+
   // Section Header
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: theme.spacing.screen,
-    marginBottom: theme.spacing.lg,
+    marginBottom: 16,
   },
   sectionTitle: {
     ...theme.typography.h3,
@@ -501,8 +423,9 @@ const styles = StyleSheet.create({
   },
   seeAllText: {
     ...theme.typography.bodySmMedium,
-    color: theme.colors.primary,
+    color: theme.colors.primaryDark,
   },
+
   // Session Card
   sessionCard: {
     flexDirection: 'row',
@@ -510,21 +433,22 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     marginHorizontal: theme.spacing.screen,
     borderRadius: theme.radius.lg,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.md,
-    ...theme.shadows.sm,
+    padding: 16,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
   },
   sessionIcon: {
     width: 44,
     height: 44,
-    borderRadius: theme.radius.md,
+    borderRadius: 12,
     backgroundColor: theme.colors.primaryMuted,
     justifyContent: 'center',
     alignItems: 'center',
   },
   sessionInfo: {
     flex: 1,
-    marginLeft: theme.spacing.md,
+    marginLeft: 14,
   },
   sessionPose: {
     ...theme.typography.bodyMedium,
@@ -537,9 +461,10 @@ const styles = StyleSheet.create({
   },
   sessionScore: {
     alignItems: 'center',
-    marginRight: theme.spacing.sm,
+    marginRight: 8,
   },
   scoreValue: {
+    fontFamily: 'Inter_700Bold',
     fontSize: 22,
     fontWeight: '700',
   },
@@ -548,23 +473,25 @@ const styles = StyleSheet.create({
     color: theme.colors.textTertiary,
     fontSize: 10,
   },
+
   // Empty State
   emptyState: {
     alignItems: 'center',
-    paddingVertical: theme.spacing['4xl'],
+    paddingVertical: 48,
     marginHorizontal: theme.spacing.screen,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.card,
     borderRadius: theme.radius.xl,
-    ...theme.shadows.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
   },
   emptyIconContainer: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: theme.colors.borderLight,
+    backgroundColor: theme.colors.primaryMuted,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: theme.spacing.lg,
+    marginBottom: 16,
   },
   emptyStateText: {
     ...theme.typography.bodyMedium,
@@ -573,43 +500,7 @@ const styles = StyleSheet.create({
   emptyStateSubtext: {
     ...theme.typography.bodySm,
     color: theme.colors.textTertiary,
-    marginTop: theme.spacing.xs,
-  },
-  // Quick Actions
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: theme.spacing.screen,
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing['2xl'],
-  },
-  quickActionCard: {
-    width: '47%',
-  },
-  quickAction: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.lg,
-    borderWidth: 1.5,
-    borderColor: theme.colors.borderLight,
-    ...theme.shadows.sm,
-  },
-  quickActionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: theme.radius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  quickActionTitle: {
-    ...theme.typography.bodyMedium,
-    color: theme.colors.text,
-    marginBottom: 2,
-  },
-  quickActionDesc: {
-    ...theme.typography.caption,
-    color: theme.colors.textTertiary,
+    marginTop: 4,
   },
 });
 

@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.xl,
   },
   userBubble: {
-    backgroundColor: theme.colors.success,
+    backgroundColor: theme.colors.primaryMuted,
     borderBottomRightRadius: theme.spacing.xs,
   },
   aiBubble: {
