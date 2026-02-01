@@ -1,6 +1,10 @@
-export { default as SplashScreen } from './SplashScreen';
+export { default as LandingScreen } from './LandingScreen';
 export { default as LoginScreen } from './LoginScreen';
+export { default as RegisterScreen } from './RegisterScreen';
 export { default as HomeScreen } from './HomeScreen';
 export { default as CameraSetupScreen } from './CameraSetupScreen';
 export { default as CameraScreen } from './CameraScreen';
 export { default as ProfileScreen } from './ProfileScreen';
+export { default as AIChatScreen } from './AIChatScreen';
+export { default as FitnessPlannerScreen } from './FitnessPlannerScreen';
+export { default as DietPlannerScreen } from './DietPlannerScreen';

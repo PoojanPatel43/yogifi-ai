@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '../utils/haptics';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, Session } from '../types';
 import { getSessionHistoryApi } from '../services/api';

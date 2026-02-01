@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from 'axios';
-import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import { getItem, setItem, deleteItem } from '../utils/storage';
 import {
   ApiResponse,
   AuthResponse,
@@ -14,11 +14,14 @@ import {
 
 // Platform-specific base URL
 const getBaseUrl = (): string => {
+  if (Platform.OS === 'web') {
+    return 'http://localhost:8080/api';
+  }
   if (__DEV__) {
     if (Platform.OS === 'android') {
       return 'http://10.0.2.2:8080/api';
     } else if (Platform.OS === 'ios') {
-      return 'http://192.168.1.86:8080/api';  // ✅ Your Mac's IP
+      return 'http://192.168.1.86:8080/api';
     }
   }
   return 'http://localhost:8080/api';
@@ -68,7 +71,7 @@ const api: AxiosInstance = axios.create({
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     try {
-      const token = await SecureStore.getItemAsync(TOKEN_KEY);
+      const token = await getItem(TOKEN_KEY);
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -103,25 +106,25 @@ api.interceptors.response.use(
 // Token and user data management
 export const setAuthData = async (token: string, refreshToken: string, user: any): Promise<void> => {
   logDebug('Saving auth data', { token: token.substring(0, 20) + '...', user });
-  await SecureStore.setItemAsync(TOKEN_KEY, token);
-  await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
-  await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+  await setItem(TOKEN_KEY, token);
+  await setItem(REFRESH_TOKEN_KEY, refreshToken);
+  await setItem(USER_KEY, JSON.stringify(user));
 };
 
 export const clearAuthData = async (): Promise<void> => {
   logDebug('Clearing auth data');
-  await SecureStore.deleteItemAsync(TOKEN_KEY);
-  await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
-  await SecureStore.deleteItemAsync(USER_KEY);
+  await deleteItem(TOKEN_KEY);
+  await deleteItem(REFRESH_TOKEN_KEY);
+  await deleteItem(USER_KEY);
 };
 
 export const getAuthToken = async (): Promise<string | null> => {
-  return await SecureStore.getItemAsync(TOKEN_KEY);
+  return await getItem(TOKEN_KEY);
 };
 
 export const getStoredUser = async (): Promise<any | null> => {
   try {
-    const userData = await SecureStore.getItemAsync(USER_KEY);
+    const userData = await getItem(USER_KEY);
     return userData ? JSON.parse(userData) : null;
   } catch {
     return null;
@@ -263,7 +266,7 @@ export const logoutApi = async (): Promise<void> => {
 
 export const refreshTokenApi = async (): Promise<ApiResponse<AuthResponse>> => {
   try {
-    const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+    const refreshToken = await getItem(REFRESH_TOKEN_KEY);
     if (!refreshToken) {
       return { success: false, error: 'No refresh token' };
     }
@@ -673,6 +676,109 @@ const generateMockInsights = async (sessionId: string): Promise<ApiResponse<Coac
       },
     },
   };
+};
+
+// ============ AI Chat API ============
+
+export const sendChatMessageApi = async (
+  message: string,
+  conversationId?: string
+): Promise<ApiResponse<{ conversationId: string; message: string; role: string }>> => {
+  try {
+    const response = await api.post('/chat/ask', { message, conversationId });
+    const backendResponse = response.data;
+
+    if (backendResponse.success) {
+      return { success: true, data: backendResponse.data };
+    }
+
+    return { success: false, error: backendResponse.message || 'Failed to send message' };
+  } catch (error: any) {
+    return { success: false, error: extractErrorMessage(error, 'Failed to send message') };
+  }
+};
+
+export const getChatHistoryApi = async (): Promise<ApiResponse<any[]>> => {
+  try {
+    const response = await api.get('/chat/history');
+    const backendResponse = response.data;
+
+    if (backendResponse.success) {
+      return { success: true, data: backendResponse.data };
+    }
+
+    return { success: false, error: backendResponse.message || 'Failed to fetch chat history' };
+  } catch (error: any) {
+    return { success: false, error: extractErrorMessage(error, 'Failed to fetch chat history') };
+  }
+};
+
+// ============ Fitness Plan API ============
+
+export const generateFitnessPlanApi = async (
+  request: { fitnessLevel: string; goal: string; daysPerWeek: number; equipment: string }
+): Promise<ApiResponse<any>> => {
+  try {
+    const response = await api.post('/fitness/generate-plan', request);
+    const backendResponse = response.data;
+
+    if (backendResponse.success) {
+      return { success: true, data: backendResponse.data };
+    }
+
+    return { success: false, error: backendResponse.message || 'Failed to generate fitness plan' };
+  } catch (error: any) {
+    return { success: false, error: extractErrorMessage(error, 'Failed to generate fitness plan') };
+  }
+};
+
+export const getFitnessPlansApi = async (): Promise<ApiResponse<any[]>> => {
+  try {
+    const response = await api.get('/fitness/plans');
+    const backendResponse = response.data;
+
+    if (backendResponse.success) {
+      return { success: true, data: backendResponse.data };
+    }
+
+    return { success: false, error: backendResponse.message || 'Failed to fetch fitness plans' };
+  } catch (error: any) {
+    return { success: false, error: extractErrorMessage(error, 'Failed to fetch fitness plans') };
+  }
+};
+
+// ============ Nutrition Plan API ============
+
+export const generateNutritionPlanApi = async (
+  request: { dietaryPreference: string; goal: string; calorieTarget: number; allergies: string }
+): Promise<ApiResponse<any>> => {
+  try {
+    const response = await api.post('/nutrition/generate-plan', request);
+    const backendResponse = response.data;
+
+    if (backendResponse.success) {
+      return { success: true, data: backendResponse.data };
+    }
+
+    return { success: false, error: backendResponse.message || 'Failed to generate nutrition plan' };
+  } catch (error: any) {
+    return { success: false, error: extractErrorMessage(error, 'Failed to generate nutrition plan') };
+  }
+};
+
+export const getNutritionPlansApi = async (): Promise<ApiResponse<any[]>> => {
+  try {
+    const response = await api.get('/nutrition/plans');
+    const backendResponse = response.data;
+
+    if (backendResponse.success) {
+      return { success: true, data: backendResponse.data };
+    }
+
+    return { success: false, error: backendResponse.message || 'Failed to fetch nutrition plans' };
+  } catch (error: any) {
+    return { success: false, error: extractErrorMessage(error, 'Failed to fetch nutrition plans') };
+  }
 };
 
 // ============ Health Check ============

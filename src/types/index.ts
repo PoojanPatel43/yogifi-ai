@@ -1,6 +1,7 @@
 // Navigation Types
 export type RootStackParamList = {
   Splash: undefined;
+  Landing: undefined;
   Login: undefined;
   Register: undefined;
   Onboarding: undefined;
@@ -11,6 +12,9 @@ export type RootStackParamList = {
   Camera: CameraParams | undefined;
   SessionComplete: SessionCompleteParams;
   AICoach: AICoachParams;
+  AIChat: undefined;
+  FitnessPlanner: undefined;
+  DietPlanner: undefined;
   History: undefined;
   SessionDetails: SessionDetailsParams;
   Profile: undefined;

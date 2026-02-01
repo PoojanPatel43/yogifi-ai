@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import * as SecureStore from 'expo-secure-store';
 import { RootStackParamList } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { theme } from '../constants/theme';
 
 // Import screens
-import SplashScreen from '../screens/SplashScreen';
-import OnboardingScreen from '../screens/OnboardingScreen';
+import LandingScreen from '../screens/LandingScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
@@ -20,36 +20,20 @@ import SessionDetailsScreen from '../screens/SessionDetailsScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import AIChatScreen from '../screens/AIChatScreen';
+import FitnessPlannerScreen from '../screens/FitnessPlannerScreen';
+import DietPlannerScreen from '../screens/DietPlannerScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-const ONBOARDING_COMPLETE_KEY = 'onboarding_complete';
-
-// Main App Navigator - handles all screens
 const AppNavigator: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
-  const [hasSeenOnboarding, setHasSeenOnboarding] = useState<boolean | null>(null);
 
-  // Check if user has completed onboarding
-  useEffect(() => {
-    const checkOnboarding = async () => {
-      try {
-        const completed = await SecureStore.getItemAsync(ONBOARDING_COMPLETE_KEY);
-        setHasSeenOnboarding(completed === 'true');
-      } catch (error) {
-        console.log('Error checking onboarding status:', error);
-        setHasSeenOnboarding(false);
-      }
-    };
-    checkOnboarding();
-  }, []);
-
-  // Show splash/loading screen while checking auth state or onboarding status
-  if (isLoading || hasSeenOnboarding === null) {
+  if (isLoading) {
     return (
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Splash" component={SplashScreen} />
-      </Stack.Navigator>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
     );
   }
 
@@ -61,25 +45,15 @@ const AppNavigator: React.FC = () => {
       }}
     >
       {isAuthenticated ? (
-        // Authenticated screens
         <>
           <Stack.Screen
             name="Home"
             component={HomeScreen}
             options={{ animation: 'fade' }}
           />
-          <Stack.Screen
-            name="PoseSelection"
-            component={PoseSelectionScreen}
-          />
-          <Stack.Screen
-            name="PoseInstruction"
-            component={PoseInstructionScreen}
-          />
-          <Stack.Screen
-            name="CameraSetup"
-            component={CameraSetupScreen}
-          />
+          <Stack.Screen name="PoseSelection" component={PoseSelectionScreen} />
+          <Stack.Screen name="PoseInstruction" component={PoseInstructionScreen} />
+          <Stack.Screen name="CameraSetup" component={CameraSetupScreen} />
           <Stack.Screen
             name="Camera"
             component={CameraScreen}
@@ -95,52 +69,23 @@ const AppNavigator: React.FC = () => {
             component={AICoachScreen}
             options={{ animation: 'slide_from_bottom' }}
           />
-          <Stack.Screen
-            name="History"
-            component={HistoryScreen}
-          />
-          <Stack.Screen
-            name="SessionDetails"
-            component={SessionDetailsScreen}
-          />
-          <Stack.Screen
-            name="Profile"
-            component={ProfileScreen}
-          />
-          <Stack.Screen
-            name="Settings"
-            component={SettingsScreen}
-          />
-        </>
-      ) : !hasSeenOnboarding ? (
-        // Onboarding for first-time users
-        <>
-          <Stack.Screen
-            name="Onboarding"
-            component={OnboardingScreen}
-            options={{ animation: 'fade' }}
-          />
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-          />
-          <Stack.Screen
-            name="Register"
-            component={RegisterScreen}
-          />
+          <Stack.Screen name="History" component={HistoryScreen} />
+          <Stack.Screen name="SessionDetails" component={SessionDetailsScreen} />
+          <Stack.Screen name="Profile" component={ProfileScreen} />
+          <Stack.Screen name="Settings" component={SettingsScreen} />
+          <Stack.Screen name="AIChat" component={AIChatScreen} />
+          <Stack.Screen name="FitnessPlanner" component={FitnessPlannerScreen} />
+          <Stack.Screen name="DietPlanner" component={DietPlannerScreen} />
         </>
       ) : (
-        // Auth screens for returning users
         <>
           <Stack.Screen
-            name="Login"
-            component={LoginScreen}
+            name="Landing"
+            component={LandingScreen}
             options={{ animation: 'fade' }}
           />
-          <Stack.Screen
-            name="Register"
-            component={RegisterScreen}
-          />
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Register" component={RegisterScreen} />
         </>
       )}
     </Stack.Navigator>

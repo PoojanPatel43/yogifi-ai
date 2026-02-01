@@ -2,19 +2,20 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Animatable from 'react-native-animatable';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { useAuth } from '../context/AuthContext';
-import Colors from '../constants/colors';
+import { theme } from '../constants/theme';
+import { GradientButton, AnimatedInput, AnimatedCard } from '../components/ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -22,7 +23,6 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,38 +71,67 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+    <View style={styles.container}>
+      {/* Gradient Header Background */}
+      <LinearGradient
+        colors={theme.gradients.splash as any}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradientHeader}
       >
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Ionicons name="fitness" size={48} color={Colors.primary} />
+        <View style={styles.headerContent}>
+          <AnimatedCard index={0} enterFrom="scale">
+            <View style={styles.logoGlow}>
+              <Ionicons name="fitness" size={44} color={theme.colors.textInverse} />
             </View>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to continue your yoga practice</Text>
-          </View>
+          </AnimatedCard>
+          <AnimatedCard index={1}>
+            <Text style={styles.headerTitle}>Welcome Back</Text>
+          </AnimatedCard>
+          <AnimatedCard index={2}>
+            <Text style={styles.headerSubtitle}>
+              Sign in to continue your yoga journey
+            </Text>
+          </AnimatedCard>
+        </View>
+      </LinearGradient>
 
-          {error && (
-            <View style={styles.errorContainer}>
-              <Ionicons name="alert-circle" size={20} color={Colors.error} />
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
+      {/* Form Card */}
+      <KeyboardAvoidingView
+        style={styles.formWrapper}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={-40}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          <Animatable.View
+            animation="fadeInUp"
+            delay={200}
+            duration={500}
+            style={styles.formCard}
+          >
+            {/* Error Banner */}
+            {error && (
+              <Animatable.View
+                animation="fadeIn"
+                duration={300}
+                style={styles.errorContainer}
+              >
+                <View style={styles.errorAccent} />
+                <Ionicons name="alert-circle" size={18} color={theme.colors.error} />
+                <Text style={styles.errorText}>{error}</Text>
+              </Animatable.View>
+            )}
 
-          <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Ionicons name="mail-outline" size={20} color={Colors.textMuted} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Email"
-                placeholderTextColor={Colors.textMuted}
+            {/* Inputs */}
+            <View style={styles.inputsContainer}>
+              <AnimatedInput
+                icon="mail-outline"
+                label="Email"
                 value={email}
                 onChangeText={(text) => {
                   setEmail(text);
@@ -112,162 +141,166 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 autoCapitalize="none"
                 autoCorrect={false}
                 editable={!isLoading}
+                error={!!error && !email.trim()}
               />
-            </View>
 
-            <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed-outline" size={20} color={Colors.textMuted} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor={Colors.textMuted}
+              <AnimatedInput
+                icon="lock-closed-outline"
+                label="Password"
                 value={password}
                 onChangeText={(text) => {
                   setPassword(text);
                   setError(null);
                 }}
-                secureTextEntry={!showPassword}
+                isPassword
                 editable={!isLoading}
+                error={!!error && !password}
               />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeButton}
-                disabled={isLoading}
-              >
-                <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={20}
-                  color={Colors.textMuted}
-                />
-              </TouchableOpacity>
             </View>
 
-            <TouchableOpacity
-              style={[styles.button, isLoading && styles.buttonDisabled]}
+            {/* Sign In Button */}
+            <GradientButton
+              title="Sign In"
               onPress={handleLogin}
+              loading={isLoading}
+              disabled={isLoading}
+              gradient={theme.gradients.primaryToSecondary}
+              size="lg"
+              style={styles.signInButton}
+            />
+
+            {/* Divider */}
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Register Link */}
+            <TouchableOpacity
+              style={styles.registerLink}
+              onPress={handleRegister}
               disabled={isLoading}
             >
-              {isLoading ? (
-                <ActivityIndicator color={Colors.background} />
-              ) : (
-                <Text style={styles.buttonText}>Sign In</Text>
-              )}
+              <Text style={styles.registerText}>
+                Don't have an account?{' '}
+                <Text style={styles.registerTextBold}>Sign Up</Text>
+              </Text>
             </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity style={styles.registerLink} onPress={handleRegister} disabled={isLoading}>
-            <Text style={styles.registerText}>
-              Don't have an account? <Text style={styles.registerTextBold}>Sign Up</Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          </Animatable.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: theme.colors.background,
+  },
+  gradientHeader: {
+    paddingTop: 80,
+    paddingBottom: 60,
+    paddingHorizontal: theme.spacing.screen,
+  },
+  headerContent: {
+    alignItems: 'center',
+  },
+  logoGlow: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: theme.spacing['2xl'],
+    ...theme.shadows.glow('rgba(255, 255, 255, 0.3)'),
+  },
+  headerTitle: {
+    ...theme.typography.h1,
+    color: theme.colors.textInverse,
+    textAlign: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  headerSubtitle: {
+    ...theme.typography.body,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+  },
+  formWrapper: {
+    flex: 1,
+    marginTop: -30,
   },
   scrollContent: {
     flexGrow: 1,
   },
-  content: {
+  formCard: {
     flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 30,
-    paddingVertical: 40,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: Colors.text,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: Colors.textLight,
-    textAlign: 'center',
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: theme.radius['3xl'],
+    borderTopRightRadius: theme.radius['3xl'],
+    paddingHorizontal: theme.spacing['2xl'],
+    paddingTop: theme.spacing['3xl'],
+    paddingBottom: theme.spacing['4xl'],
+    ...theme.shadows.lg,
   },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.errorLight,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    gap: 8,
+    backgroundColor: theme.colors.errorLight,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.xl,
+    gap: theme.spacing.sm,
+    overflow: 'hidden',
+  },
+  errorAccent: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
+    backgroundColor: theme.colors.error,
+    borderTopLeftRadius: theme.radius.md,
+    borderBottomLeftRadius: theme.radius.md,
   },
   errorText: {
     flex: 1,
-    color: Colors.error,
-    fontSize: 14,
+    color: theme.colors.error,
+    ...theme.typography.bodySm,
+    marginLeft: theme.spacing.xs,
   },
-  form: {
-    gap: 16,
+  inputsContainer: {
+    marginBottom: theme.spacing.sm,
   },
-  inputContainer: {
+  signInButton: {
+    marginTop: theme.spacing.sm,
+  },
+  dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    marginVertical: theme.spacing['2xl'],
   },
-  inputIcon: {
-    paddingLeft: 16,
-  },
-  input: {
+  dividerLine: {
     flex: 1,
-    padding: 16,
-    fontSize: 16,
-    color: Colors.text,
+    height: 1,
+    backgroundColor: theme.colors.borderLight,
   },
-  eyeButton: {
-    padding: 16,
-  },
-  button: {
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 8,
-    height: 52,
-    justifyContent: 'center',
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: Colors.background,
-    fontSize: 18,
-    fontWeight: '600',
+  dividerText: {
+    marginHorizontal: theme.spacing.lg,
+    ...theme.typography.caption,
+    color: theme.colors.textTertiary,
   },
   registerLink: {
-    marginTop: 30,
     alignItems: 'center',
   },
   registerText: {
-    fontSize: 14,
-    color: Colors.textLight,
+    ...theme.typography.bodySm,
+    color: theme.colors.textSecondary,
   },
   registerTextBold: {
-    color: Colors.primary,
+    color: theme.colors.primary,
     fontWeight: '600',
   },
 });

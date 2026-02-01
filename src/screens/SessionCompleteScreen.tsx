@@ -7,17 +7,18 @@ import {
   ScrollView,
   Animated,
   Alert,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import ConfettiCannon from 'react-native-confetti-cannon';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '../utils/haptics';
 import * as Sharing from 'expo-sharing';
 import ViewShot, { captureRef } from 'react-native-view-shot';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
-import Colors from '../constants/colors';
+import { theme } from '../constants/theme';
 import { APP_CONFIG } from '../constants/config';
+import { AnimatedCard, GradientButton } from '../components/ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SessionComplete'>;
 
@@ -39,7 +40,6 @@ const SessionCompleteScreen: React.FC<Props> = ({ navigation, route }) => {
   const showConfetti = overallScore >= APP_CONFIG.CONFETTI_SCORE_THRESHOLD;
 
   useEffect(() => {
-    // Trigger haptic feedback
     if (APP_CONFIG.ENABLE_HAPTIC_FEEDBACK) {
       Haptics.notificationAsync(
         showConfetti
@@ -48,7 +48,6 @@ const SessionCompleteScreen: React.FC<Props> = ({ navigation, route }) => {
       );
     }
 
-    // Animate score in
     Animated.sequence([
       Animated.timing(scaleAnim, {
         toValue: 1.2,
@@ -62,7 +61,6 @@ const SessionCompleteScreen: React.FC<Props> = ({ navigation, route }) => {
       }),
     ]).start();
 
-    // Fade in content
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 600,
@@ -70,7 +68,6 @@ const SessionCompleteScreen: React.FC<Props> = ({ navigation, route }) => {
       useNativeDriver: true,
     }).start();
 
-    // Trigger confetti for good scores
     if (showConfetti && confettiRef.current) {
       setTimeout(() => {
         confettiRef.current?.start();
@@ -86,9 +83,15 @@ const SessionCompleteScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const getScoreColor = (score: number): string => {
-    if (score >= 80) return Colors.success;
-    if (score >= 60) return Colors.warning;
-    return Colors.error;
+    if (score >= 80) return theme.colors.success;
+    if (score >= 60) return theme.colors.warning;
+    return theme.colors.accent;
+  };
+
+  const getScoreGlow = (score: number): string => {
+    if (score >= 80) return theme.colors.success;
+    if (score >= 60) return theme.colors.warning;
+    return theme.colors.accent;
   };
 
   const getScoreEmoji = (score: number): string => {
@@ -170,6 +173,12 @@ const SessionCompleteScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <View style={styles.container}>
+      {/* Subtle gradient background */}
+      <LinearGradient
+        colors={theme.gradients.surface as any}
+        style={StyleSheet.absoluteFill}
+      />
+
       {/* Confetti for good scores */}
       {showConfetti && (
         <ConfettiCannon
@@ -179,7 +188,13 @@ const SessionCompleteScreen: React.FC<Props> = ({ navigation, route }) => {
           autoStart={false}
           fadeOut
           fallSpeed={3000}
-          colors={[Colors.primary, Colors.secondary, Colors.success, '#FFD700', '#FF69B4']}
+          colors={[
+            theme.colors.primary,
+            theme.colors.secondary,
+            theme.colors.success,
+            theme.colors.warning,
+            theme.colors.accentLight,
+          ]}
         />
       )}
 
@@ -192,57 +207,72 @@ const SessionCompleteScreen: React.FC<Props> = ({ navigation, route }) => {
         <ViewShot ref={shareCardRef} options={{ format: 'png', quality: 1 }}>
           <View style={styles.shareableCard}>
             {/* Header with emoji and title */}
-            <View style={styles.header}>
-              <Text style={styles.emoji}>{getScoreEmoji(overallScore)}</Text>
-              <Text style={styles.title}>Session Complete!</Text>
-              <Text style={styles.poseName}>{poseName}</Text>
-            </View>
+            <AnimatedCard index={0} enterFrom="scale">
+              <View style={styles.header}>
+                <Text style={styles.emoji}>{getScoreEmoji(overallScore)}</Text>
+                <Text style={styles.title}>Session Complete!</Text>
+                <Text style={styles.poseName}>{poseName}</Text>
+              </View>
+            </AnimatedCard>
 
             {/* Main Score Card */}
-            <Animated.View
-              style={[
-                styles.scoreCard,
-                { transform: [{ scale: scaleAnim }] },
-              ]}
-            >
-              <View style={styles.scoreCircle}>
-                <Text style={[styles.scoreValue, { color: getScoreColor(overallScore) }]}>
-                  {overallScore}
-                </Text>
-                <Text style={styles.scoreMax}>/100</Text>
-              </View>
-              <Text style={styles.scoreLabel}>{getScoreLabel(overallScore)}</Text>
-            </Animated.View>
+            <AnimatedCard index={1} enterFrom="scale">
+              <Animated.View
+                style={[
+                  styles.scoreCard,
+                  {
+                    transform: [{ scale: scaleAnim }],
+                    ...theme.shadows.glow(getScoreGlow(overallScore)),
+                  },
+                ]}
+              >
+                <View style={styles.scoreCircle}>
+                  <Text style={[styles.scoreValue, { color: getScoreColor(overallScore) }]}>
+                    {overallScore}
+                  </Text>
+                  <Text style={styles.scoreMax}>/100</Text>
+                </View>
+                <Text style={styles.scoreLabel}>{getScoreLabel(overallScore)}</Text>
+              </Animated.View>
+            </AnimatedCard>
 
             {/* Stats Row */}
-            <Animated.View style={[styles.statsCard, { opacity: fadeAnim }]}>
-              <View style={styles.statItem}>
-                <Ionicons name="time-outline" size={28} color={Colors.primary} />
-                <Text style={styles.statValue}>{formatDuration(duration)}</Text>
-                <Text style={styles.statLabel}>Duration</Text>
-              </View>
-
-              <View style={styles.statDivider} />
-
-              {stabilityScore !== undefined && (
-                <>
-                  <View style={styles.statItem}>
-                    <Ionicons name="fitness-outline" size={28} color={Colors.secondary} />
-                    <Text style={styles.statValue}>{stabilityScore}</Text>
-                    <Text style={styles.statLabel}>Stability</Text>
-                  </View>
-                  <View style={styles.statDivider} />
-                </>
-              )}
-
-              {alignmentScore !== undefined && (
+            <AnimatedCard index={2} enterFrom="bottom">
+              <Animated.View style={[styles.statsCard, { opacity: fadeAnim }]}>
                 <View style={styles.statItem}>
-                  <Ionicons name="resize-outline" size={28} color={Colors.warning} />
-                  <Text style={styles.statValue}>{alignmentScore}</Text>
-                  <Text style={styles.statLabel}>Alignment</Text>
+                  <View style={[styles.statIconBg, { backgroundColor: theme.colors.primaryMuted }]}>
+                    <Ionicons name="time-outline" size={22} color={theme.colors.primary} />
+                  </View>
+                  <Text style={styles.statValue}>{formatDuration(duration)}</Text>
+                  <Text style={styles.statLabel}>Duration</Text>
                 </View>
-              )}
-            </Animated.View>
+
+                <View style={styles.statDivider} />
+
+                {stabilityScore !== undefined && (
+                  <>
+                    <View style={styles.statItem}>
+                      <View style={[styles.statIconBg, { backgroundColor: theme.colors.secondaryMuted }]}>
+                        <Ionicons name="fitness-outline" size={22} color={theme.colors.secondary} />
+                      </View>
+                      <Text style={styles.statValue}>{stabilityScore}</Text>
+                      <Text style={styles.statLabel}>Stability</Text>
+                    </View>
+                    <View style={styles.statDivider} />
+                  </>
+                )}
+
+                {alignmentScore !== undefined && (
+                  <View style={styles.statItem}>
+                    <View style={[styles.statIconBg, { backgroundColor: theme.colors.warningMuted }]}>
+                      <Ionicons name="resize-outline" size={22} color={theme.colors.warning} />
+                    </View>
+                    <Text style={styles.statValue}>{alignmentScore}</Text>
+                    <Text style={styles.statLabel}>Alignment</Text>
+                  </View>
+                )}
+              </Animated.View>
+            </AnimatedCard>
 
             {/* Branding for shared image */}
             <Text style={styles.shareBranding}>Yogifi AI</Text>
@@ -252,41 +282,63 @@ const SessionCompleteScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Action Buttons */}
         <Animated.View style={[styles.actionButtons, { opacity: fadeAnim }]}>
           {/* AI Coach Insights - Primary CTA */}
-          <TouchableOpacity style={styles.aiCoachButton} onPress={handleAICoach}>
-            <View style={styles.aiCoachIcon}>
-              <Ionicons name="sparkles" size={24} color="#FFFFFF" />
-            </View>
-            <View style={styles.aiCoachContent}>
-              <Text style={styles.aiCoachTitle}>AI Coach Insights</Text>
-              <Text style={styles.aiCoachSubtitle}>Get personalized feedback</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
+          <AnimatedCard index={3} enterFrom="bottom">
+            <TouchableOpacity style={styles.aiCoachButton} onPress={handleAICoach} activeOpacity={0.8}>
+              <LinearGradient
+                colors={theme.gradients.primaryToSecondary as any}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.aiCoachGradient}
+              >
+                <View style={styles.aiCoachIcon}>
+                  <Ionicons name="sparkles" size={22} color={theme.colors.textInverse} />
+                </View>
+                <View style={styles.aiCoachContent}>
+                  <Text style={styles.aiCoachTitle}>AI Coach Insights</Text>
+                  <Text style={styles.aiCoachSubtitle}>Get personalized feedback</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={22} color={theme.colors.textInverse} />
+              </LinearGradient>
+            </TouchableOpacity>
+          </AnimatedCard>
 
           {/* View Details & Share Row */}
-          <View style={styles.rowButtons}>
-            <TouchableOpacity style={styles.detailsButton} onPress={handleViewDetails}>
-              <Ionicons name="analytics-outline" size={22} color={Colors.primary} />
-              <Text style={styles.detailsButtonText}>View Details</Text>
-            </TouchableOpacity>
+          <AnimatedCard index={4} enterFrom="bottom">
+            <View style={styles.rowButtons}>
+              <TouchableOpacity style={styles.detailsButton} onPress={handleViewDetails} activeOpacity={0.7}>
+                <View style={[styles.actionIconBg, { backgroundColor: theme.colors.primaryMuted }]}>
+                  <Ionicons name="analytics-outline" size={18} color={theme.colors.primary} />
+                </View>
+                <Text style={styles.detailsButtonText}>View Details</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-              <Ionicons name="share-outline" size={22} color={Colors.success} />
-              <Text style={styles.shareButtonText}>Share Score</Text>
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity style={styles.shareButton} onPress={handleShare} activeOpacity={0.7}>
+                <View style={[styles.actionIconBg, { backgroundColor: theme.colors.successMuted }]}>
+                  <Ionicons name="share-outline" size={18} color={theme.colors.success} />
+                </View>
+                <Text style={styles.shareButtonText}>Share Score</Text>
+              </TouchableOpacity>
+            </View>
+          </AnimatedCard>
 
           {/* Practice Again */}
-          <TouchableOpacity style={styles.primaryButton} onPress={handlePracticeAgain}>
-            <Ionicons name="refresh" size={22} color="#FFFFFF" />
-            <Text style={styles.primaryButtonText}>Practice Again</Text>
-          </TouchableOpacity>
+          <AnimatedCard index={5} enterFrom="bottom">
+            <GradientButton
+              title="Practice Again"
+              onPress={handlePracticeAgain}
+              gradient={theme.gradients.success}
+              size="lg"
+              icon={<Ionicons name="refresh" size={20} color={theme.colors.textInverse} />}
+            />
+          </AnimatedCard>
 
           {/* Home Button */}
-          <TouchableOpacity style={styles.homeButton} onPress={handleGoHome}>
-            <Ionicons name="home-outline" size={22} color={Colors.textLight} />
-            <Text style={styles.homeButtonText}>Back to Home</Text>
-          </TouchableOpacity>
+          <AnimatedCard index={6} enterFrom="bottom">
+            <TouchableOpacity style={styles.homeButton} onPress={handleGoHome} activeOpacity={0.7}>
+              <Ionicons name="home-outline" size={20} color={theme.colors.textTertiary} />
+              <Text style={styles.homeButtonText}>Back to Home</Text>
+            </TouchableOpacity>
+          </AnimatedCard>
         </Animated.View>
       </ScrollView>
     </View>
@@ -296,7 +348,7 @@ const SessionCompleteScreen: React.FC<Props> = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: theme.colors.background,
   },
   scrollView: {
     flex: 1,
@@ -304,201 +356,194 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 40,
   },
+  shareableCard: {
+    backgroundColor: theme.colors.background,
+  },
   header: {
     alignItems: 'center',
     paddingTop: 80,
-    paddingBottom: 24,
+    paddingBottom: theme.spacing['2xl'],
   },
   emoji: {
     fontSize: 64,
-    marginBottom: 16,
+    marginBottom: theme.spacing.lg,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: Colors.text,
-    marginBottom: 8,
+    ...theme.typography.h1,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
   },
   poseName: {
-    fontSize: 18,
-    color: Colors.textLight,
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
   },
+  // Score Card
   scoreCard: {
     alignItems: 'center',
-    marginHorizontal: 20,
-    marginBottom: 24,
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 24,
-    paddingVertical: 32,
-    paddingHorizontal: 24,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    marginHorizontal: theme.spacing.screen,
+    marginBottom: theme.spacing['2xl'],
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius['2xl'],
+    paddingVertical: theme.spacing['3xl'],
+    paddingHorizontal: theme.spacing['2xl'],
   },
   scoreCircle: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    marginBottom: 8,
+    marginBottom: theme.spacing.sm,
   },
   scoreValue: {
     fontSize: 80,
-    fontWeight: 'bold',
+    fontWeight: '800',
+    letterSpacing: -2,
   },
   scoreMax: {
-    fontSize: 24,
-    color: Colors.textMuted,
+    ...theme.typography.h2,
+    color: theme.colors.textTertiary,
     marginLeft: 4,
   },
   scoreLabel: {
-    fontSize: 20,
-    color: Colors.textLight,
-    fontWeight: '500',
+    ...theme.typography.h3,
+    color: theme.colors.textSecondary,
   },
+  // Stats Card
   statsCard: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    backgroundColor: Colors.cardBackground,
-    marginHorizontal: 20,
-    borderRadius: 16,
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    marginBottom: 32,
+    backgroundColor: theme.colors.surface,
+    marginHorizontal: theme.spacing.screen,
+    borderRadius: theme.radius.xl,
+    paddingVertical: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing['3xl'],
+    ...theme.shadows.sm,
   },
   statItem: {
     alignItems: 'center',
     flex: 1,
   },
+  statIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: theme.radius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+  },
   statDivider: {
     width: 1,
-    height: 50,
-    backgroundColor: Colors.border,
+    height: 56,
+    backgroundColor: theme.colors.borderLight,
   },
   statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: Colors.text,
-    marginTop: 8,
+    ...theme.typography.h2,
+    color: theme.colors.text,
+    marginBottom: 2,
   },
   statLabel: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    marginTop: 4,
+    ...theme.typography.caption,
+    color: theme.colors.textTertiary,
   },
+  shareBranding: {
+    textAlign: 'center',
+    ...theme.typography.bodySmMedium,
+    color: theme.colors.primary,
+    paddingBottom: theme.spacing.lg,
+  },
+  // Action Buttons
   actionButtons: {
-    paddingHorizontal: 20,
-    gap: 12,
+    paddingHorizontal: theme.spacing.screen,
+    gap: theme.spacing.md,
   },
   aiCoachButton: {
+    borderRadius: theme.radius.xl,
+    overflow: 'hidden',
+    ...theme.shadows.colored(theme.colors.primary),
+  },
+  aiCoachGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.primary,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 8,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    padding: theme.spacing.lg,
+    gap: theme.spacing.md,
   },
   aiCoachIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
   aiCoachContent: {
     flex: 1,
   },
   aiCoachTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    ...theme.typography.h3,
+    color: theme.colors.textInverse,
   },
   aiCoachSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+    ...theme.typography.bodySm,
+    color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 2,
   },
-  shareableCard: {
-    backgroundColor: Colors.background,
-  },
-  shareBranding: {
-    textAlign: 'center',
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.primary,
-    paddingBottom: 16,
-  },
+  // Row Buttons
   rowButtons: {
     flexDirection: 'row',
-    gap: 12,
+    gap: theme.spacing.md,
+  },
+  actionIconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: theme.radius.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   detailsButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 12,
-    paddingVertical: 14,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.lg,
+    paddingVertical: theme.spacing.md,
+    gap: theme.spacing.sm,
+    borderWidth: 1.5,
+    borderColor: theme.colors.borderLight,
+    ...theme.shadows.sm,
   },
   detailsButtonText: {
-    fontSize: 15,
-    color: Colors.primary,
-    fontWeight: '500',
+    ...theme.typography.bodySmMedium,
+    color: theme.colors.primary,
   },
   shareButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.successLight,
-    borderRadius: 12,
-    paddingVertical: 14,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: Colors.success + '30',
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.lg,
+    paddingVertical: theme.spacing.md,
+    gap: theme.spacing.sm,
+    borderWidth: 1.5,
+    borderColor: theme.colors.borderLight,
+    ...theme.shadows.sm,
   },
   shareButtonText: {
-    fontSize: 15,
-    color: Colors.success,
-    fontWeight: '500',
+    ...theme.typography.bodySmMedium,
+    color: theme.colors.success,
   },
-  primaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.secondary,
-    borderRadius: 12,
-    paddingVertical: 16,
-    gap: 8,
-  },
-  primaryButtonText: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
+  // Home Button
   homeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    gap: 8,
+    paddingVertical: theme.spacing.lg,
+    gap: theme.spacing.sm,
   },
   homeButtonText: {
-    fontSize: 16,
-    color: Colors.textLight,
-    fontWeight: '500',
+    ...theme.typography.bodyMedium,
+    color: theme.colors.textTertiary,
   },
 });
 

@@ -11,12 +11,14 @@ import {
   NativeScrollEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import * as SecureStore from 'expo-secure-store';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from '../utils/haptics';
+import { setItem } from '../utils/storage';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
-import Colors from '../constants/colors';
+import { theme } from '../constants/theme';
 import { APP_CONFIG } from '../constants/config';
+import { AnimatedCard, GradientButton } from '../components/ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Onboarding'>;
 
@@ -30,7 +32,7 @@ interface OnboardingSlide {
   subtitle: string;
   icon: string;
   iconColor: string;
-  content?: React.ReactNode;
+  gradientColors: readonly string[];
 }
 
 interface GoalOption {
@@ -108,28 +110,32 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
       title: 'Welcome to Yogifi AI',
       subtitle: 'Your personal AI yoga instructor',
       icon: 'flower-outline',
-      iconColor: Colors.primary,
+      iconColor: theme.colors.primary,
+      gradientColors: theme.gradients.primary,
     },
     {
       id: '2',
       title: 'How It Works',
       subtitle: 'Practice yoga with real-time AI guidance',
       icon: 'videocam-outline',
-      iconColor: Colors.secondary,
+      iconColor: theme.colors.secondary,
+      gradientColors: theme.gradients.primaryToSecondary,
     },
     {
       id: '3',
       title: 'Set Your Goals',
       subtitle: 'What would you like to achieve?',
       icon: 'flag-outline',
-      iconColor: Colors.success,
+      iconColor: theme.colors.success,
+      gradientColors: theme.gradients.success,
     },
     {
       id: '4',
       title: 'Choose Your Level',
-      subtitle: 'We\'ll personalize your experience',
+      subtitle: "We'll personalize your experience",
       icon: 'speedometer-outline',
-      iconColor: Colors.warning,
+      iconColor: theme.colors.warning,
+      gradientColors: theme.gradients.sunset,
     },
   ];
 
@@ -168,22 +174,20 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
 
-    // Save onboarding completion status and user preferences
     try {
-      await SecureStore.setItemAsync(ONBOARDING_COMPLETE_KEY, 'true');
+      await setItem(ONBOARDING_COMPLETE_KEY, 'true');
 
       const selectedGoals = goals.filter(g => g.selected).map(g => g.id);
       if (selectedGoals.length > 0) {
-        await SecureStore.setItemAsync('user_goals', JSON.stringify(selectedGoals));
+        await setItem('user_goals', JSON.stringify(selectedGoals));
       }
       if (selectedLevel) {
-        await SecureStore.setItemAsync('user_fitness_level', selectedLevel);
+        await setItem('user_fitness_level', selectedLevel);
       }
     } catch (error) {
       console.log('Error saving onboarding data:', error);
     }
 
-    // Navigate to register/login
     navigation.replace('Login');
   };
 
@@ -192,7 +196,7 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     try {
-      await SecureStore.setItemAsync(ONBOARDING_COMPLETE_KEY, 'true');
+      await setItem(ONBOARDING_COMPLETE_KEY, 'true');
     } catch (error) {
       console.log('Error saving onboarding skip:', error);
     }
@@ -202,120 +206,138 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
   const renderSlide = ({ item, index }: { item: OnboardingSlide; index: number }) => {
     return (
       <View style={styles.slide}>
-        {/* Icon */}
-        <View style={[styles.iconContainer, { backgroundColor: item.iconColor + '15' }]}>
-          <Ionicons name={item.icon as any} size={80} color={item.iconColor} />
-        </View>
+        {/* Icon with gradient ring */}
+        <AnimatedCard index={0} enterFrom="scale">
+          <View style={styles.iconOuter}>
+            <LinearGradient
+              colors={item.gradientColors as any}
+              style={styles.iconGradientRing}
+            >
+              <View style={styles.iconInner}>
+                <Ionicons name={item.icon as any} size={48} color={item.iconColor} />
+              </View>
+            </LinearGradient>
+          </View>
+        </AnimatedCard>
 
         {/* Title */}
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.subtitle}>{item.subtitle}</Text>
+        <AnimatedCard index={1}>
+          <Text style={styles.title}>{item.title}</Text>
+        </AnimatedCard>
+        <AnimatedCard index={2}>
+          <Text style={styles.subtitle}>{item.subtitle}</Text>
+        </AnimatedCard>
 
         {/* Slide-specific content */}
         {index === 1 && (
           <View style={styles.howItWorksContent}>
-            <View style={styles.stepItem}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>1</Text>
-              </View>
-              <View style={styles.stepText}>
-                <Text style={styles.stepTitle}>Select a Pose</Text>
-                <Text style={styles.stepDescription}>Choose from our library of yoga poses</Text>
-              </View>
-            </View>
-            <View style={styles.stepItem}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>2</Text>
-              </View>
-              <View style={styles.stepText}>
-                <Text style={styles.stepTitle}>Practice with Camera</Text>
-                <Text style={styles.stepDescription}>Our AI analyzes your form in real-time</Text>
-              </View>
-            </View>
-            <View style={styles.stepItem}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>3</Text>
-              </View>
-              <View style={styles.stepText}>
-                <Text style={styles.stepTitle}>Get AI Feedback</Text>
-                <Text style={styles.stepDescription}>Receive personalized tips and scores</Text>
-              </View>
-            </View>
+            {[
+              { num: '1', title: 'Select a Pose', desc: 'Choose from our library of yoga poses' },
+              { num: '2', title: 'Practice with Camera', desc: 'Our AI analyzes your form in real-time' },
+              { num: '3', title: 'Get AI Feedback', desc: 'Receive personalized tips and scores' },
+            ].map((step, i) => (
+              <AnimatedCard key={step.num} index={i + 3} enterFrom="bottom">
+                <View style={styles.stepItem}>
+                  <LinearGradient
+                    colors={theme.gradients.primaryToSecondary as any}
+                    style={styles.stepNumber}
+                  >
+                    <Text style={styles.stepNumberText}>{step.num}</Text>
+                  </LinearGradient>
+                  <View style={styles.stepText}>
+                    <Text style={styles.stepTitle}>{step.title}</Text>
+                    <Text style={styles.stepDescription}>{step.desc}</Text>
+                  </View>
+                </View>
+              </AnimatedCard>
+            ))}
           </View>
         )}
 
         {index === 2 && (
           <View style={styles.goalsContent}>
-            {goals.map(goal => (
-              <TouchableOpacity
-                key={goal.id}
-                style={[
-                  styles.goalOption,
-                  goal.selected && styles.goalOptionSelected,
-                ]}
-                onPress={() => toggleGoal(goal.id)}
-                activeOpacity={0.7}
-              >
-                <View style={[
-                  styles.goalIconContainer,
-                  goal.selected && styles.goalIconContainerSelected,
-                ]}>
-                  <Ionicons
-                    name={goal.icon as any}
-                    size={24}
-                    color={goal.selected ? '#FFFFFF' : Colors.primary}
-                  />
-                </View>
-                <Text style={[
-                  styles.goalLabel,
-                  goal.selected && styles.goalLabelSelected,
-                ]}>
-                  {goal.label}
-                </Text>
-                {goal.selected && (
-                  <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
-                )}
-              </TouchableOpacity>
+            {goals.map((goal, i) => (
+              <AnimatedCard key={goal.id} index={i + 3} enterFrom="bottom">
+                <TouchableOpacity
+                  style={[
+                    styles.goalOption,
+                    goal.selected && styles.goalOptionSelected,
+                  ]}
+                  onPress={() => toggleGoal(goal.id)}
+                  activeOpacity={0.7}
+                >
+                  {goal.selected ? (
+                    <LinearGradient
+                      colors={theme.gradients.primary as any}
+                      style={styles.goalIconContainer}
+                    >
+                      <Ionicons name={goal.icon as any} size={22} color={theme.colors.textInverse} />
+                    </LinearGradient>
+                  ) : (
+                    <View style={styles.goalIconContainer}>
+                      <Ionicons name={goal.icon as any} size={22} color={theme.colors.primary} />
+                    </View>
+                  )}
+                  <Text style={[
+                    styles.goalLabel,
+                    goal.selected && styles.goalLabelSelected,
+                  ]}>
+                    {goal.label}
+                  </Text>
+                  {goal.selected && (
+                    <View style={styles.checkCircle}>
+                      <Ionicons name="checkmark" size={14} color={theme.colors.textInverse} />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </AnimatedCard>
             ))}
-            <Text style={styles.goalsHint}>Select all that apply</Text>
+            <AnimatedCard index={7}>
+              <Text style={styles.goalsHint}>Select all that apply</Text>
+            </AnimatedCard>
           </View>
         )}
 
         {index === 3 && (
           <View style={styles.levelContent}>
-            {fitnessLevels.map(level => (
-              <TouchableOpacity
-                key={level.id}
-                style={[
-                  styles.levelOption,
-                  selectedLevel === level.id && styles.levelOptionSelected,
-                ]}
-                onPress={() => selectFitnessLevel(level.id)}
-                activeOpacity={0.7}
-              >
-                <View style={[
-                  styles.levelIconContainer,
-                  selectedLevel === level.id && styles.levelIconContainerSelected,
-                ]}>
-                  <Ionicons
-                    name={level.icon as any}
-                    size={28}
-                    color={selectedLevel === level.id ? '#FFFFFF' : Colors.primary}
-                  />
-                </View>
-                <View style={styles.levelTextContainer}>
-                  <Text style={[
-                    styles.levelLabel,
-                    selectedLevel === level.id && styles.levelLabelSelected,
-                  ]}>
-                    {level.label}
-                  </Text>
-                  <Text style={styles.levelDescription}>{level.description}</Text>
-                </View>
-                {selectedLevel === level.id && (
-                  <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
-                )}
-              </TouchableOpacity>
+            {fitnessLevels.map((level, i) => (
+              <AnimatedCard key={level.id} index={i + 3} enterFrom="bottom">
+                <TouchableOpacity
+                  style={[
+                    styles.levelOption,
+                    selectedLevel === level.id && styles.levelOptionSelected,
+                  ]}
+                  onPress={() => selectFitnessLevel(level.id)}
+                  activeOpacity={0.7}
+                >
+                  {selectedLevel === level.id ? (
+                    <LinearGradient
+                      colors={theme.gradients.primary as any}
+                      style={styles.levelIconContainer}
+                    >
+                      <Ionicons name={level.icon as any} size={26} color={theme.colors.textInverse} />
+                    </LinearGradient>
+                  ) : (
+                    <View style={styles.levelIconContainer}>
+                      <Ionicons name={level.icon as any} size={26} color={theme.colors.primary} />
+                    </View>
+                  )}
+                  <View style={styles.levelTextContainer}>
+                    <Text style={[
+                      styles.levelLabel,
+                      selectedLevel === level.id && styles.levelLabelSelected,
+                    ]}>
+                      {level.label}
+                    </Text>
+                    <Text style={styles.levelDescription}>{level.description}</Text>
+                  </View>
+                  {selectedLevel === level.id && (
+                    <View style={styles.checkCircle}>
+                      <Ionicons name="checkmark" size={14} color={theme.colors.textInverse} />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </AnimatedCard>
             ))}
           </View>
         )}
@@ -335,13 +357,19 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
 
           const dotWidth = scrollX.interpolate({
             inputRange,
-            outputRange: [8, 24, 8],
+            outputRange: [8, 28, 8],
             extrapolate: 'clamp',
           });
 
           const opacity = scrollX.interpolate({
             inputRange,
-            outputRange: [0.3, 1, 0.3],
+            outputRange: [0.25, 1, 0.25],
+            extrapolate: 'clamp',
+          });
+
+          const backgroundColor = scrollX.interpolate({
+            inputRange,
+            outputRange: [theme.colors.border, theme.colors.primary, theme.colors.border],
             extrapolate: 'clamp',
           });
 
@@ -353,7 +381,7 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
                 {
                   width: dotWidth,
                   opacity,
-                  backgroundColor: Colors.primary,
+                  backgroundColor,
                 },
               ]}
             />
@@ -367,6 +395,12 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
+      {/* Subtle gradient background */}
+      <LinearGradient
+        colors={theme.gradients.surface as any}
+        style={StyleSheet.absoluteFill}
+      />
+
       {/* Skip button */}
       <TouchableOpacity style={styles.skipButton} onPress={skipOnboarding}>
         <Text style={styles.skipText}>Skip</Text>
@@ -397,31 +431,34 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
 
       {/* Navigation buttons */}
       <View style={styles.buttonContainer}>
-        {currentIndex > 0 && (
+        {currentIndex > 0 ? (
           <TouchableOpacity style={styles.backButton} onPress={goToPrevious}>
-            <Ionicons name="arrow-back" size={24} color={Colors.textLight} />
+            <Ionicons name="arrow-back" size={22} color={theme.colors.textSecondary} />
           </TouchableOpacity>
+        ) : (
+          <View style={styles.backButtonPlaceholder} />
         )}
 
         <View style={styles.spacer} />
 
         {isLastSlide ? (
-          <TouchableOpacity
-            style={[
-              styles.getStartedButton,
-              !selectedLevel && styles.getStartedButtonDisabled,
-            ]}
+          <GradientButton
+            title="Get Started"
             onPress={completeOnboarding}
             disabled={!selectedLevel}
-          >
-            <Text style={styles.getStartedText}>Get Started</Text>
-            <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+            gradient={theme.gradients.primaryToSecondary}
+            size="md"
+            icon={<Ionicons name="arrow-forward" size={18} color={theme.colors.textInverse} />}
+            style={styles.navButton}
+          />
         ) : (
-          <TouchableOpacity style={styles.nextButton} onPress={goToNext}>
-            <Text style={styles.nextText}>Next</Text>
-            <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          <GradientButton
+            title="Next"
+            onPress={goToNext}
+            size="md"
+            icon={<Ionicons name="arrow-forward" size={18} color={theme.colors.textInverse} />}
+            style={styles.navButton}
+          />
         )}
       </View>
     </View>
@@ -431,187 +468,203 @@ const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: theme.colors.background,
   },
   skipButton: {
     position: 'absolute',
     top: 60,
-    right: 20,
+    right: theme.spacing.screen,
     zIndex: 10,
-    padding: 8,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.primaryMuted,
   },
   skipText: {
-    fontSize: 16,
-    color: Colors.textMuted,
-    fontWeight: '500',
+    ...theme.typography.bodySmMedium,
+    color: theme.colors.primary,
   },
   slide: {
     width: SCREEN_WIDTH,
     flex: 1,
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 120,
+    paddingHorizontal: theme.spacing['2xl'],
+    paddingTop: 110,
   },
-  iconContainer: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+  // Icon with gradient ring
+  iconOuter: {
+    marginBottom: theme.spacing['2xl'],
+  },
+  iconGradientRing: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 32,
+    ...theme.shadows.glow(theme.colors.primary),
+  },
+  iconInner: {
+    width: 108,
+    height: 108,
+    borderRadius: 54,
+    backgroundColor: theme.colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: Colors.text,
+    ...theme.typography.h1,
+    color: theme.colors.text,
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: theme.spacing.sm,
   },
   subtitle: {
-    fontSize: 16,
-    color: Colors.textLight,
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: theme.spacing['3xl'],
     lineHeight: 24,
   },
-  // How it works content
+  // How it works
   howItWorksContent: {
     width: '100%',
-    paddingTop: 16,
+    paddingTop: theme.spacing.sm,
   },
   stepItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-    backgroundColor: Colors.cardBackground,
-    padding: 16,
-    borderRadius: 12,
+    marginBottom: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.lg,
+    borderRadius: theme.radius.lg,
+    ...theme.shadows.sm,
   },
   stepNumber: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.primary,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: theme.spacing.lg,
   },
   stepNumberText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    ...theme.typography.bodyMedium,
+    fontWeight: '700',
+    color: theme.colors.textInverse,
   },
   stepText: {
     flex: 1,
   },
   stepTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text,
-    marginBottom: 4,
+    ...theme.typography.bodyMedium,
+    color: theme.colors.text,
+    marginBottom: 2,
   },
   stepDescription: {
-    fontSize: 14,
-    color: Colors.textLight,
+    ...theme.typography.bodySm,
+    color: theme.colors.textTertiary,
   },
-  // Goals content
+  // Goals
   goalsContent: {
     width: '100%',
   },
   goalOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.cardBackground,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.lg,
+    borderRadius: theme.radius.lg,
+    marginBottom: theme.spacing.md,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: theme.colors.borderLight,
+    ...theme.shadows.sm,
   },
   goalOptionSelected: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryLight,
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primaryMuted,
+    ...theme.shadows.glow(theme.colors.primaryGlow),
   },
   goalIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.primaryLight,
+    width: 44,
+    height: 44,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.primaryMuted,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
-  },
-  goalIconContainerSelected: {
-    backgroundColor: Colors.primary,
+    marginRight: theme.spacing.lg,
   },
   goalLabel: {
     flex: 1,
-    fontSize: 16,
-    fontWeight: '500',
-    color: Colors.text,
+    ...theme.typography.bodyMedium,
+    color: theme.colors.text,
   },
   goalLabelSelected: {
-    color: Colors.primary,
+    color: theme.colors.primary,
     fontWeight: '600',
+  },
+  checkCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   goalsHint: {
     textAlign: 'center',
-    fontSize: 14,
-    color: Colors.textMuted,
-    marginTop: 8,
+    ...theme.typography.caption,
+    color: theme.colors.textTertiary,
+    marginTop: theme.spacing.sm,
   },
-  // Level content
+  // Level
   levelContent: {
     width: '100%',
   },
   levelOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.cardBackground,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.lg,
+    borderRadius: theme.radius.lg,
+    marginBottom: theme.spacing.md,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: theme.colors.borderLight,
+    ...theme.shadows.sm,
   },
   levelOptionSelected: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryLight,
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primaryMuted,
+    ...theme.shadows.glow(theme.colors.primaryGlow),
   },
   levelIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.primaryLight,
+    width: 52,
+    height: 52,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.primaryMuted,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
-  },
-  levelIconContainerSelected: {
-    backgroundColor: Colors.primary,
+    marginRight: theme.spacing.lg,
   },
   levelTextContainer: {
     flex: 1,
   },
   levelLabel: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.text,
-    marginBottom: 4,
+    ...theme.typography.h3,
+    color: theme.colors.text,
+    marginBottom: 2,
   },
   levelLabelSelected: {
-    color: Colors.primary,
+    color: theme.colors.primary,
   },
   levelDescription: {
-    fontSize: 14,
-    color: Colors.textLight,
+    ...theme.typography.bodySm,
+    color: theme.colors.textTertiary,
   },
   // Pagination
   pagination: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: theme.spacing['2xl'],
   },
   dot: {
     height: 8,
@@ -622,50 +675,26 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingHorizontal: theme.spacing['2xl'],
+    paddingBottom: 44,
   },
   backButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: Colors.cardBackground,
+    backgroundColor: theme.colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
+    ...theme.shadows.sm,
+  },
+  backButtonPlaceholder: {
+    width: 48,
   },
   spacer: {
     flex: 1,
   },
-  nextButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    gap: 8,
-  },
-  nextText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  getStartedButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-    gap: 8,
-  },
-  getStartedButtonDisabled: {
-    backgroundColor: Colors.textMuted,
-  },
-  getStartedText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+  navButton: {
+    minWidth: 140,
   },
 });
 
