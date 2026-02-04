@@ -36,7 +36,7 @@ const ShimmerLoader: React.FC<ShimmerLoaderProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: theme.colors.borderLight,
+    backgroundColor: theme.colors.card,
     overflow: 'hidden',
   },
 });

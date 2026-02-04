@@ -15,6 +15,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -95,14 +97,62 @@ public class UserService {
         Long totalSeconds = sessionRepository.sumDurationByUserId(userId);
         Double avgScore = sessionRepository.avgScoreByUserId(userId);
 
+        // Calculate streaks from completed session dates
+        List<LocalDate> sessionDates = sessionRepository.findCompletedSessionDatesByUserId(userId);
+        int currentStreak = 0;
+        int longestStreak = 0;
+
+        if (!sessionDates.isEmpty()) {
+            // sessionDates is sorted DESC — calculate current streak from today
+            LocalDate today = LocalDate.now();
+            LocalDate checkDate = today;
+
+            // Current streak: count consecutive days backward from today (or yesterday)
+            if (!sessionDates.isEmpty()) {
+                LocalDate firstDate = sessionDates.get(0);
+                // Allow today or yesterday as the start
+                if (firstDate.equals(today) || firstDate.equals(today.minusDays(1))) {
+                    checkDate = firstDate;
+                    currentStreak = 1;
+                    for (int i = 1; i < sessionDates.size(); i++) {
+                        if (sessionDates.get(i).equals(checkDate.minusDays(1))) {
+                            currentStreak++;
+                            checkDate = sessionDates.get(i);
+                        } else if (!sessionDates.get(i).equals(checkDate)) {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Longest streak: find max consecutive day run
+            int streak = 1;
+            longestStreak = 1;
+            for (int i = 1; i < sessionDates.size(); i++) {
+                if (sessionDates.get(i).equals(sessionDates.get(i - 1).minusDays(1))) {
+                    streak++;
+                    longestStreak = Math.max(longestStreak, streak);
+                } else if (!sessionDates.get(i).equals(sessionDates.get(i - 1))) {
+                    streak = 1;
+                }
+            }
+        }
+
+        // Count unique poses
+        Integer posesCompleted = sessionRepository.countDistinctPosesByUserId(userId);
+
+        // Most practiced pose
+        List<Object[]> mostPracticed = sessionRepository.findMostPracticedPoseByUserId(userId);
+        String mostPracticedPose = (!mostPracticed.isEmpty()) ? (String) mostPracticed.get(0)[0] : null;
+
         return UserStatsResponse.builder()
             .totalSessions(totalSessions)
             .totalMinutes(totalSeconds / 60)
-            .averageScore(Math.round(avgScore * 10.0) / 10.0) // Round to 1 decimal
-            .currentStreak(0) // TODO: Calculate streak
-            .longestStreak(0) // TODO: Calculate longest streak
-            .mostPracticedPose(null) // TODO: Find most practiced pose
-            .posesCompleted(0) // TODO: Count unique poses
+            .averageScore(Math.round(avgScore * 10.0) / 10.0)
+            .currentStreak(currentStreak)
+            .longestStreak(longestStreak)
+            .mostPracticedPose(mostPracticedPose)
+            .posesCompleted(posesCompleted != null ? posesCompleted : 0)
             .build();
     }
 }

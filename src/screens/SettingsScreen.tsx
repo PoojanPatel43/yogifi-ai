@@ -14,7 +14,7 @@ import * as Haptics from '../utils/haptics';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { useAuth } from '../context/AuthContext';
-import Colors from '../constants/colors';
+import { theme } from '../constants/theme';
 import { APP_CONFIG } from '../constants/config';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
@@ -31,7 +31,7 @@ interface SettingItemProps {
 
 const SettingItem: React.FC<SettingItemProps> = ({
   icon,
-  iconColor = Colors.text,
+  iconColor = theme.colors.textTertiary,
   title,
   subtitle,
   onPress,
@@ -44,7 +44,7 @@ const SettingItem: React.FC<SettingItemProps> = ({
     disabled={!onPress}
     activeOpacity={onPress ? 0.7 : 1}
   >
-    <View style={[styles.settingIcon, { backgroundColor: iconColor + '15' }]}>
+    <View style={styles.settingIcon}>
       <Ionicons name={icon as any} size={22} color={iconColor} />
     </View>
     <View style={styles.settingContent}>
@@ -53,7 +53,7 @@ const SettingItem: React.FC<SettingItemProps> = ({
     </View>
     {rightElement}
     {showChevron && onPress && (
-      <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+      <Ionicons name="chevron-forward" size={20} color={theme.colors.textTertiary} />
     )}
   </TouchableOpacity>
 );
@@ -150,7 +150,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color={Colors.text} />
+          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Settings</Text>
         <View style={styles.placeholder} />
@@ -167,7 +167,6 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.sectionCard}>
             <SettingItem
               icon="notifications-outline"
-              iconColor={Colors.primary}
               title="Push Notifications"
               subtitle="Get reminders for daily practice"
               showChevron={false}
@@ -175,7 +174,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
                 <Switch
                   value={notificationsEnabled}
                   onValueChange={handleToggleNotifications}
-                  trackColor={{ false: Colors.border, true: Colors.primary }}
+                  trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
                   thumbColor="#FFFFFF"
                 />
               }
@@ -189,7 +188,6 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.sectionCard}>
             <SettingItem
               icon="hand-left-outline"
-              iconColor={Colors.secondary}
               title="Haptic Feedback"
               subtitle="Vibration on button press"
               showChevron={false}
@@ -197,7 +195,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
                 <Switch
                   value={hapticEnabled}
                   onValueChange={handleToggleHaptic}
-                  trackColor={{ false: Colors.border, true: Colors.primary }}
+                  trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
                   thumbColor="#FFFFFF"
                 />
               }
@@ -205,7 +203,6 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.divider} />
             <SettingItem
               icon="camera-reverse-outline"
-              iconColor={Colors.warning}
               title="Default Camera"
               subtitle={defaultCamera === 'front' ? 'Front camera' : 'Back camera'}
               onPress={handleToggleCamera}
@@ -219,7 +216,6 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.sectionCard}>
             <SettingItem
               icon="trash-outline"
-              iconColor={Colors.error}
               title="Clear Cache"
               subtitle="Free up storage space"
               onPress={handleClearCache}
@@ -233,21 +229,18 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.sectionCard}>
             <SettingItem
               icon="help-circle-outline"
-              iconColor={Colors.primary}
               title="Help Center"
               onPress={() => handleOpenLink('https://yogifi.ai/help')}
             />
             <View style={styles.divider} />
             <SettingItem
               icon="mail-outline"
-              iconColor={Colors.secondary}
               title="Contact Support"
               onPress={handleContactSupport}
             />
             <View style={styles.divider} />
             <SettingItem
               icon="star-outline"
-              iconColor={Colors.warning}
               title="Rate the App"
               onPress={() => handleOpenLink('https://apps.apple.com')}
             />
@@ -260,14 +253,12 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.sectionCard}>
             <SettingItem
               icon="document-text-outline"
-              iconColor={Colors.textLight}
               title="Privacy Policy"
               onPress={() => handleOpenLink('https://yogifi.ai/privacy')}
             />
             <View style={styles.divider} />
             <SettingItem
               icon="shield-checkmark-outline"
-              iconColor={Colors.textLight}
               title="Terms of Service"
               onPress={() => handleOpenLink('https://yogifi.ai/terms')}
             />
@@ -280,7 +271,6 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.sectionCard}>
             <SettingItem
               icon="information-circle-outline"
-              iconColor={Colors.textMuted}
               title="App Version"
               subtitle="1.0.0 (Build 1)"
               showChevron={false}
@@ -290,11 +280,11 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
 
         {/* Logout Button */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={22} color={Colors.error} />
+          <Ionicons name="log-out-outline" size={22} color={theme.colors.error} />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: theme.spacing.lg }} />
       </ScrollView>
     </View>
   );
@@ -303,98 +293,91 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingHorizontal: theme.spacing.screen,
+    paddingBottom: theme.spacing.sm,
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: theme.spacing.lg,
+    height: theme.spacing.lg,
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.text,
+    ...theme.typography.h4,
+    color: theme.colors.text,
   },
   placeholder: {
-    width: 40,
+    width: theme.spacing.lg,
   },
   content: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: theme.spacing.screen,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: theme.spacing.lg,
   },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-    marginLeft: 4,
+    ...theme.typography.caption,
+    color: theme.colors.textTertiary,
+    marginBottom: theme.spacing.xs,
+    marginLeft: theme.spacing.xs / 2,
   },
   sectionCard: {
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 16,
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
     overflow: 'hidden',
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: theme.spacing.sm,
   },
   settingIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: theme.spacing.lg,
+    height: theme.spacing.lg,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: theme.spacing.md - theme.spacing.sm,
   },
   settingContent: {
     flex: 1,
   },
   settingTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: Colors.text,
+    ...theme.typography.bodyMedium,
+    color: theme.colors.text,
   },
   settingSubtitle: {
-    fontSize: 13,
-    color: Colors.textMuted,
+    ...theme.typography.bodySm,
+    color: theme.colors.textTertiary,
     marginTop: 2,
   },
   divider: {
     height: 1,
-    backgroundColor: Colors.border,
-    marginLeft: 68,
+    backgroundColor: theme.colors.borderLight,
+    marginLeft: theme.spacing.lg + (theme.spacing.md - theme.spacing.sm) + theme.spacing.sm,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.error + '15',
-    borderRadius: 12,
-    paddingVertical: 16,
-    gap: 8,
-    marginTop: 8,
+    paddingVertical: theme.spacing.sm,
+    gap: theme.spacing.xs,
+    marginTop: theme.spacing.xs,
   },
   logoutText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.error,
+    ...theme.typography.bodyMedium,
+    color: theme.colors.error,
   },
 });
 

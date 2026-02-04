@@ -15,7 +15,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, UserProfile, UserStats } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { getProfileApi, getUserStatsApi } from '../services/api';
-import Colors from '../constants/colors';
+import { theme } from '../constants/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
@@ -95,7 +95,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
@@ -112,7 +112,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         <RefreshControl
           refreshing={isRefreshing}
           onRefresh={() => fetchData(true)}
-          tintColor={Colors.primary}
+          tintColor={theme.colors.primary}
         />
       }
     >
@@ -121,7 +121,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color={Colors.text} />
+          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>
         <View style={styles.placeholder} />
@@ -142,27 +142,23 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         </View>
 
         <View style={styles.statsSection}>
-          <Text style={styles.sectionTitle}>Your Stats</Text>
+          <Text style={styles.sectionTitle}>YOUR STATS</Text>
           <View style={styles.statsGrid}>
             <View style={styles.statItem}>
-              <Ionicons name="calendar" size={24} color={Colors.primary} />
               <Text style={styles.statValue}>{stats?.totalSessions ?? 0}</Text>
-              <Text style={styles.statLabel}>Total Sessions</Text>
+              <Text style={styles.statLabel}>Sessions</Text>
             </View>
             <View style={styles.statItem}>
-              <Ionicons name="time" size={24} color={Colors.success} />
-              <Text style={styles.statValue}>{stats?.totalMinutes ?? 0} min</Text>
-              <Text style={styles.statLabel}>Total Practice</Text>
+              <Text style={styles.statValue}>{stats?.totalMinutes ?? 0}</Text>
+              <Text style={styles.statLabel}>Minutes</Text>
             </View>
             <View style={styles.statItem}>
-              <Ionicons name="trophy" size={24} color={Colors.warning} />
               <Text style={styles.statValue}>
                 {stats?.averageScore ? Math.round(stats.averageScore) : '--'}
               </Text>
-              <Text style={styles.statLabel}>Average Score</Text>
+              <Text style={styles.statLabel}>Avg Score</Text>
             </View>
             <View style={styles.statItem}>
-              <Ionicons name="flame" size={24} color={Colors.secondary} />
               <Text style={styles.statValue}>{stats?.currentStreak ?? 0}</Text>
               <Text style={styles.statLabel}>Day Streak</Text>
             </View>
@@ -171,7 +167,6 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 
         {stats?.longestStreak !== undefined && stats.longestStreak > 0 && (
           <View style={styles.achievementCard}>
-            <Ionicons name="ribbon" size={24} color={Colors.warning} />
             <View style={styles.achievementInfo}>
               <Text style={styles.achievementTitle}>Longest Streak</Text>
               <Text style={styles.achievementValue}>{stats.longestStreak} days</Text>
@@ -182,45 +177,40 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.menuSection}>
           <TouchableOpacity
             style={styles.menuItem}
+            onPress={() => navigation.navigate('Progress')}
+          >
+            <Text style={styles.menuText}>Progress</Text>
+            <Ionicons name="chevron-forward" size={18} color={theme.colors.textTertiary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
             onPress={() => navigation.navigate('History')}
           >
-            <View style={styles.menuIconContainer}>
-              <Ionicons name="list" size={22} color={Colors.primary} />
-            </View>
             <Text style={styles.menuText}>Session History</Text>
-            <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+            <Ionicons name="chevron-forward" size={18} color={theme.colors.textTertiary} />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.menuItem}
             onPress={() => navigation.navigate('Settings')}
           >
-            <View style={styles.menuIconContainer}>
-              <Ionicons name="settings-outline" size={22} color={Colors.primary} />
-            </View>
             <Text style={styles.menuText}>Settings</Text>
-            <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+            <Ionicons name="chevron-forward" size={18} color={theme.colors.textTertiary} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuIconContainer}>
-              <Ionicons name="help-circle-outline" size={22} color={Colors.primary} />
-            </View>
             <Text style={styles.menuText}>Help & Support</Text>
-            <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+            <Ionicons name="chevron-forward" size={18} color={theme.colors.textTertiary} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuIconContainer}>
-              <Ionicons name="information-circle-outline" size={22} color={Colors.primary} />
-            </View>
+          <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]}>
             <Text style={styles.menuText}>About Yogifi AI</Text>
-            <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+            <Ionicons name="chevron-forward" size={18} color={theme.colors.textTertiary} />
           </TouchableOpacity>
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color={Colors.secondary} />
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
       </View>
@@ -231,24 +221,24 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: theme.colors.background,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: theme.spacing.xl,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.background,
+    backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: theme.spacing.screen,
     paddingTop: 60,
-    paddingBottom: 16,
+    paddingBottom: theme.spacing.sm,
   },
   backButton: {
     width: 40,
@@ -257,150 +247,135 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    color: Colors.text,
-    fontSize: 18,
-    fontWeight: 'bold',
+    ...theme.typography.bodyMedium,
+    color: theme.colors.text,
   },
   placeholder: {
     width: 40,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: theme.spacing.screen,
   },
   avatarContainer: {
     alignItems: 'center',
-    paddingVertical: 24,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.lg,
   },
   avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: Colors.primary,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: theme.spacing.sm,
   },
   avatarText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: Colors.background,
+    ...theme.typography.h2,
+    color: theme.colors.textInverse,
   },
   userName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: Colors.text,
+    ...theme.typography.h2,
+    color: theme.colors.text,
     marginBottom: 4,
   },
   userEmail: {
-    fontSize: 14,
-    color: Colors.textLight,
-    marginBottom: 12,
+    ...theme.typography.bodySm,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.sm,
   },
   levelBadge: {
-    backgroundColor: Colors.primaryLight,
-    paddingHorizontal: 16,
+    backgroundColor: theme.colors.primaryMuted,
+    paddingHorizontal: theme.spacing.sm,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: theme.radius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   levelText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.primary,
+    ...theme.typography.caption,
+    color: theme.colors.primary,
     textTransform: 'capitalize',
   },
   statsSection: {
-    marginBottom: 20,
+    marginBottom: theme.spacing.md,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.text,
-    marginBottom: 16,
+    ...theme.typography.caption,
+    color: theme.colors.textTertiary,
+    marginBottom: theme.spacing.sm,
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: theme.spacing.xs,
   },
   statItem: {
-    width: '47%',
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 16,
-    padding: 16,
+    width: '48%',
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.radius.lg,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.sm,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
   },
   statValue: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: Colors.text,
-    marginTop: 8,
-    marginBottom: 4,
+    ...theme.typography.h3,
+    color: theme.colors.text,
+    marginBottom: 2,
   },
   statLabel: {
-    fontSize: 12,
-    color: Colors.textLight,
+    ...theme.typography.caption,
+    color: theme.colors.textTertiary,
   },
   achievementCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.warningLight,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    gap: 12,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   achievementInfo: {
     flex: 1,
   },
   achievementTitle: {
-    fontSize: 14,
-    color: Colors.textLight,
+    ...theme.typography.caption,
+    color: theme.colors.textTertiary,
   },
   achievementValue: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.text,
+    ...theme.typography.h4,
+    color: theme.colors.text,
+    marginTop: 2,
   },
   menuSection: {
-    marginBottom: 24,
+    marginBottom: theme.spacing.lg,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border,
   },
-  menuIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: Colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+  menuItemLast: {
+    borderBottomWidth: 0,
   },
   menuText: {
+    ...theme.typography.body,
     flex: 1,
-    fontSize: 16,
-    color: Colors.text,
+    color: theme.colors.text,
   },
   logoutButton: {
-    backgroundColor: Colors.secondaryLight,
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+    paddingVertical: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
   logoutText: {
-    color: Colors.secondary,
-    fontSize: 16,
-    fontWeight: '600',
+    ...theme.typography.bodySm,
+    color: theme.colors.error,
   },
 });
 

@@ -17,6 +17,7 @@ export type RootStackParamList = {
   DietPlanner: undefined;
   History: undefined;
   SessionDetails: SessionDetailsParams;
+  Progress: undefined;
   Profile: undefined;
   Settings: undefined;
 };

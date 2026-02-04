@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Platform,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Animatable from 'react-native-animatable';
@@ -14,7 +15,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { theme } from '../constants/theme';
 import { GradientButton } from '../components/ui';
-import { generateNutritionPlanApi } from '../services/api';
+import { generateNutritionPlanApi, getNutritionPlansApi } from '../services/api';
+import { getItem, setItem } from '../utils/storage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DietPlanner'>;
 
@@ -46,6 +48,47 @@ const DietPlannerScreen: React.FC<Props> = ({ navigation }) => {
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [savedPlans, setSavedPlans] = useState<any[]>([]);
+  const [isLoadingPlans, setIsLoadingPlans] = useState(true);
+  const [showSavedPlans, setShowSavedPlans] = useState(true);
+  const [viewingFromSaved, setViewingFromSaved] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  const fetchSavedPlans = async () => {
+    try {
+      const result = await getNutritionPlansApi();
+      if (result.success && result.data && result.data.length > 0) {
+        setSavedPlans(result.data);
+        setShowSavedPlans(true);
+      } else {
+        setShowSavedPlans(false);
+      }
+    } catch {
+      setShowSavedPlans(false);
+    } finally {
+      setIsLoadingPlans(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSavedPlans();
+  }, []);
+
+  useEffect(() => {
+    const checkWelcome = async () => {
+      const hasSeen = await getItem('has_seen_diet_planner');
+      if (!hasSeen) {
+        setShowWelcome(true);
+      }
+    };
+    checkWelcome();
+  }, []);
+
+  const dismissWelcome = async () => {
+    await setItem('has_seen_diet_planner', 'true');
+    setShowWelcome(false);
+  };
+
   const handleGenerate = async () => {
     setIsLoading(true);
     setError(null);
@@ -61,6 +104,9 @@ const DietPlannerScreen: React.FC<Props> = ({ navigation }) => {
       if (result.success && result.data) {
         setPlan(result.data.mealDays || []);
         setStep(4);
+        setViewingFromSaved(false);
+        // Refresh saved plans after generating a new one
+        fetchSavedPlans();
       } else {
         setError(result.error || 'Failed to generate plan');
       }
@@ -114,6 +160,89 @@ const DietPlannerScreen: React.FC<Props> = ({ navigation }) => {
       default: return theme.colors.textSecondary;
     }
   };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  const handleSelectSavedPlan = (savedPlan: any) => {
+    setPlan(savedPlan.mealDays || []);
+    setPreference(savedPlan.dietaryPreference || '');
+    setGoal(savedPlan.goal || '');
+    setCalories(savedPlan.calorieTarget || 0);
+    setAllergies(savedPlan.allergies || '');
+    setStep(4);
+    setShowSavedPlans(false);
+    setViewingFromSaved(true);
+  };
+
+  const renderSavedPlans = () => (
+    <Animatable.View animation="fadeIn" duration={500}>
+      <Text style={styles.stepTitle}>Your Plans</Text>
+      <Text style={styles.stepSubtitle}>Previously generated meal plans</Text>
+      <View style={styles.savedPlansList}>
+        {savedPlans.map((savedPlan, index) => (
+          <Animatable.View key={savedPlan.id || index} animation="fadeInUp" delay={index * 80} duration={400}>
+            <TouchableOpacity
+              style={styles.savedPlanCard}
+              onPress={() => handleSelectSavedPlan(savedPlan)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.savedPlanHeader}>
+                <View style={styles.savedPlanIcon}>
+                  <Ionicons name="nutrition-outline" size={20} color={theme.colors.primaryDark} />
+                </View>
+                <View style={styles.savedPlanInfo}>
+                  <Text style={styles.savedPlanPreference} numberOfLines={1}>
+                    {savedPlan.dietaryPreference || 'Custom'}
+                  </Text>
+                  <Text style={styles.savedPlanGoal} numberOfLines={1}>
+                    {savedPlan.goal}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={theme.colors.textTertiary} />
+              </View>
+              <View style={styles.savedPlanMeta}>
+                <View style={styles.savedPlanMetaItem}>
+                  <Ionicons name="flame-outline" size={14} color={theme.colors.textTertiary} />
+                  <Text style={styles.savedPlanMetaText}>{savedPlan.calorieTarget} kcal</Text>
+                </View>
+                <View style={styles.savedPlanMetaItem}>
+                  <Ionicons name="calendar-outline" size={14} color={theme.colors.textTertiary} />
+                  <Text style={styles.savedPlanMetaText}>
+                    {savedPlan.createdAt ? formatDate(savedPlan.createdAt) : 'N/A'}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </Animatable.View>
+        ))}
+      </View>
+      <View style={styles.createNewButtonContainer}>
+        <GradientButton
+          title="Create New Plan"
+          onPress={() => {
+            setShowSavedPlans(false);
+            setStep(0);
+            setPreference('');
+            setGoal('');
+            setCalories(0);
+            setAllergies('');
+            setPlan(null);
+            setViewingFromSaved(false);
+          }}
+          variant="dark"
+          size="lg"
+          style={styles.actionButton}
+        />
+      </View>
+    </Animatable.View>
+  );
 
   const renderStep = () => {
     switch (step) {
@@ -263,19 +392,47 @@ const DietPlannerScreen: React.FC<Props> = ({ navigation }) => {
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => {
-            if (step === 4) { setStep(3); setPlan(null); }
-            else if (step > 0) setStep(step - 1);
-            else navigation.goBack();
+            if (showSavedPlans) {
+              navigation.goBack();
+            } else if (step === 4 && viewingFromSaved) {
+              setShowSavedPlans(true);
+              setPlan(null);
+              setViewingFromSaved(false);
+            } else if (step === 4) {
+              setStep(3);
+              setPlan(null);
+            } else if (step > 0) {
+              setStep(step - 1);
+            } else {
+              navigation.goBack();
+            }
           }}
         >
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Diet Planner</Text>
-        <View style={{ width: 40 }} />
+        {!showSavedPlans && savedPlans.length > 0 && step < 4 ? (
+          <TouchableOpacity
+            style={styles.viewSavedButton}
+            onPress={() => {
+              setShowSavedPlans(true);
+              setStep(0);
+              setPreference('');
+              setGoal('');
+              setCalories(0);
+              setAllergies('');
+              setPlan(null);
+            }}
+          >
+            <Text style={styles.viewSavedText}>View Saved</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 40 }} />
+        )}
       </View>
 
       {/* Step Indicators */}
-      {step < 4 && (
+      {!showSavedPlans && step < 4 && (
         <View style={styles.stepIndicators}>
           {stepIndicators.map(i => (
             <View key={i} style={[styles.stepDot, i <= step && styles.stepDotActive]} />
@@ -289,7 +446,26 @@ const DietPlannerScreen: React.FC<Props> = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {isLoading ? (
+        {showWelcome && (
+          <Animatable.View animation="fadeIn" duration={400} style={styles.welcomeBanner}>
+            <Text style={styles.welcomeText}>
+              Create personalized meal plans based on your dietary preferences and goals.
+            </Text>
+            <TouchableOpacity style={styles.welcomeClose} onPress={dismissWelcome}>
+              <Ionicons name="close-circle-outline" size={18} color={theme.colors.textTertiary} />
+            </TouchableOpacity>
+          </Animatable.View>
+        )}
+        {showSavedPlans ? (
+          isLoadingPlans ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={theme.colors.primaryDark} />
+              <Text style={styles.loadingSubtext}>Loading your plans...</Text>
+            </View>
+          ) : (
+            renderSavedPlans()
+          )
+        ) : isLoading ? (
           <View style={styles.loadingContainer}>
             <Animatable.View animation="pulse" iterationCount="infinite" duration={1500}>
               <View style={styles.loadingIcon}>
@@ -312,7 +488,7 @@ const DietPlannerScreen: React.FC<Props> = ({ navigation }) => {
       </ScrollView>
 
       {/* Bottom Action */}
-      {step < 4 && !isLoading && (
+      {!showSavedPlans && step < 4 && !isLoading && (
         <View style={styles.bottomBar}>
           {step === 3 ? (
             <GradientButton
@@ -365,6 +541,14 @@ const styles = StyleSheet.create({
   headerTitle: {
     ...theme.typography.h3,
     color: theme.colors.text,
+  },
+  viewSavedButton: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+  },
+  viewSavedText: {
+    ...theme.typography.bodySmMedium,
+    color: theme.colors.primaryDark,
   },
   stepIndicators: {
     flexDirection: 'row',
@@ -625,6 +809,82 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     textAlign: 'center',
     paddingVertical: theme.spacing['3xl'],
+  },
+  // Saved plans styles
+  savedPlansList: {
+    gap: theme.spacing.md,
+  },
+  savedPlanCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+    ...theme.shadows.sm,
+  },
+  savedPlanHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+  },
+  savedPlanIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.primaryMuted,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  savedPlanInfo: {
+    flex: 1,
+  },
+  savedPlanPreference: {
+    ...theme.typography.bodyMedium,
+    color: theme.colors.text,
+  },
+  savedPlanGoal: {
+    ...theme.typography.bodySm,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+  },
+  savedPlanMeta: {
+    flexDirection: 'row',
+    gap: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderLight,
+  },
+  savedPlanMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  savedPlanMetaText: {
+    ...theme.typography.caption,
+    color: theme.colors.textTertiary,
+  },
+  createNewButtonContainer: {
+    marginTop: theme.spacing['2xl'],
+  },
+  welcomeBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+    gap: theme.spacing.sm,
+  },
+  welcomeText: {
+    ...theme.typography.bodySm,
+    color: theme.colors.textSecondary,
+    flex: 1,
+  },
+  welcomeClose: {
+    padding: 4,
   },
 });
 

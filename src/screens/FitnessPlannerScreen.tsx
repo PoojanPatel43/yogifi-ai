@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Animatable from 'react-native-animatable';
@@ -13,7 +14,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { theme } from '../constants/theme';
 import { GradientButton } from '../components/ui';
-import { generateFitnessPlanApi } from '../services/api';
+import { generateFitnessPlanApi, getFitnessPlansApi } from '../services/api';
+import { getItem, setItem } from '../utils/storage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FitnessPlanner'>;
 
@@ -47,6 +49,45 @@ const FitnessPlannerScreen: React.FC<Props> = ({ navigation }) => {
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [savedPlans, setSavedPlans] = useState<any[]>([]);
+  const [isLoadingPlans, setIsLoadingPlans] = useState(true);
+  const [showSavedPlans, setShowSavedPlans] = useState(true);
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  const loadSavedPlans = async () => {
+    try {
+      const result = await getFitnessPlansApi();
+      if (result.success && result.data && result.data.length > 0) {
+        setSavedPlans(result.data);
+      } else {
+        setShowSavedPlans(false);
+      }
+    } catch {
+      setShowSavedPlans(false);
+    } finally {
+      setIsLoadingPlans(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSavedPlans();
+  }, []);
+
+  useEffect(() => {
+    const checkWelcome = async () => {
+      const hasSeen = await getItem('has_seen_fitness_planner');
+      if (!hasSeen) {
+        setShowWelcome(true);
+      }
+    };
+    checkWelcome();
+  }, []);
+
+  const dismissWelcome = async () => {
+    await setItem('has_seen_fitness_planner', 'true');
+    setShowWelcome(false);
+  };
+
   const handleGenerate = async () => {
     setIsLoading(true);
     setError(null);
@@ -62,6 +103,12 @@ const FitnessPlannerScreen: React.FC<Props> = ({ navigation }) => {
       if (result.success && result.data) {
         setPlan(result.data.workoutDays || []);
         setStep(4);
+
+        // Refresh saved plans in the background
+        const refreshResult = await getFitnessPlansApi();
+        if (refreshResult.success && refreshResult.data) {
+          setSavedPlans(refreshResult.data);
+        }
       } else {
         setError(result.error || 'Failed to generate plan');
       }
@@ -104,6 +151,59 @@ const FitnessPlannerScreen: React.FC<Props> = ({ navigation }) => {
       <Text style={[styles.optionLabel, selected && styles.optionLabelSelected]}>{label}</Text>
       {selected && <Ionicons name="checkmark-circle" size={22} color={theme.colors.primaryDark} />}
     </TouchableOpacity>
+  );
+
+  const renderSavedPlans = () => (
+    <Animatable.View animation="fadeIn" duration={500}>
+      <Text style={styles.stepTitle}>Your Plans</Text>
+      <Text style={styles.stepSubtitle}>Previously generated plans</Text>
+      <View style={styles.savedPlansContainer}>
+        {savedPlans.map((savedPlan) => (
+          <TouchableOpacity
+            key={savedPlan.id}
+            style={styles.savedPlanCard}
+            activeOpacity={0.7}
+            onPress={() => {
+              setPlan(savedPlan.workoutDays);
+              setLevel(savedPlan.fitnessLevel);
+              setGoal(savedPlan.goal);
+              setEquipment(savedPlan.equipment);
+              setDaysPerWeek(savedPlan.daysPerWeek);
+              setStep(4);
+            }}
+          >
+            <View style={styles.savedPlanInfo}>
+              <Text style={styles.savedPlanGoal}>{savedPlan.goal}</Text>
+              <Text style={styles.savedPlanMeta}>
+                {savedPlan.fitnessLevel} | {savedPlan.daysPerWeek} days/week
+              </Text>
+              <Text style={styles.savedPlanDate}>
+                {new Date(savedPlan.createdAt).toLocaleDateString()}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.textTertiary} />
+          </TouchableOpacity>
+        ))}
+      </View>
+      <View style={styles.createNewButtonContainer}>
+        <GradientButton
+          title="Create New Plan"
+          onPress={() => {
+            setShowSavedPlans(false);
+            setStep(0);
+            setLevel('');
+            setGoal('');
+            setEquipment('');
+            setDaysPerWeek(0);
+            setPlan(null);
+            setError(null);
+          }}
+          variant="dark"
+          size="lg"
+          style={styles.actionButton}
+        />
+      </View>
+    </Animatable.View>
   );
 
   const renderStep = () => {
@@ -240,19 +340,48 @@ const FitnessPlannerScreen: React.FC<Props> = ({ navigation }) => {
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => {
-            if (step === 4) { setStep(3); setPlan(null); }
-            else if (step > 0) setStep(step - 1);
-            else navigation.goBack();
+            if (showSavedPlans && step === 4) {
+              // Viewing a saved plan — go back to saved plans list
+              setStep(0);
+              setPlan(null);
+              setExpandedDay(null);
+            } else if (showSavedPlans && step < 4) {
+              // In saved plans list view — go back to previous screen
+              navigation.goBack();
+            } else if (step === 4) {
+              setStep(3);
+              setPlan(null);
+              setExpandedDay(null);
+            } else if (step > 0) {
+              setStep(step - 1);
+            } else {
+              navigation.goBack();
+            }
           }}
         >
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Fitness Planner</Text>
-        <View style={{ width: 40 }} />
+        {!showSavedPlans && savedPlans.length > 0 && step < 4 ? (
+          <TouchableOpacity
+            style={styles.headerAction}
+            onPress={() => {
+              setShowSavedPlans(true);
+              setStep(0);
+              setPlan(null);
+              setError(null);
+              setExpandedDay(null);
+            }}
+          >
+            <Text style={styles.headerActionText}>View Saved</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 40 }} />
+        )}
       </View>
 
-      {/* Step Indicators */}
-      {step < 4 && (
+      {/* Step Indicators — only show in wizard mode */}
+      {!showSavedPlans && step < 4 && (
         <View style={styles.stepIndicators}>
           {stepIndicators.map(i => (
             <View key={i} style={[styles.stepDot, i <= step && styles.stepDotActive]} />
@@ -266,7 +395,26 @@ const FitnessPlannerScreen: React.FC<Props> = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {isLoading ? (
+        {showWelcome && (
+          <Animatable.View animation="fadeIn" duration={400} style={styles.welcomeBanner}>
+            <Text style={styles.welcomeText}>
+              Get AI-generated workout plans tailored to your fitness level and goals.
+            </Text>
+            <TouchableOpacity style={styles.welcomeClose} onPress={dismissWelcome}>
+              <Ionicons name="close-circle-outline" size={18} color={theme.colors.textTertiary} />
+            </TouchableOpacity>
+          </Animatable.View>
+        )}
+        {showSavedPlans && step < 4 ? (
+          isLoadingPlans ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={theme.colors.primaryDark} />
+              <Text style={styles.loadingSubtext}>Loading your plans...</Text>
+            </View>
+          ) : (
+            renderSavedPlans()
+          )
+        ) : isLoading ? (
           <View style={styles.loadingContainer}>
             <Animatable.View animation="pulse" iterationCount="infinite" duration={1500}>
               <View style={styles.loadingIcon}>
@@ -288,8 +436,8 @@ const FitnessPlannerScreen: React.FC<Props> = ({ navigation }) => {
         )}
       </ScrollView>
 
-      {/* Bottom Action */}
-      {step < 4 && !isLoading && (
+      {/* Bottom Action — only in wizard mode */}
+      {!showSavedPlans && step < 4 && !isLoading && (
         <View style={styles.bottomBar}>
           {step === 3 ? (
             <GradientButton
@@ -342,6 +490,15 @@ const styles = StyleSheet.create({
   headerTitle: {
     ...theme.typography.h3,
     color: theme.colors.text,
+  },
+  headerAction: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+  },
+  headerActionText: {
+    ...theme.typography.bodySm,
+    color: theme.colors.primaryDark,
+    fontWeight: '600',
   },
   stepIndicators: {
     flexDirection: 'row',
@@ -590,6 +747,58 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     textAlign: 'center',
     paddingVertical: theme.spacing['3xl'],
+  },
+  savedPlansContainer: {
+    gap: theme.spacing.md,
+  },
+  savedPlanCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.lg,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+    ...theme.shadows.sm,
+  },
+  savedPlanInfo: {
+    flex: 1,
+  },
+  savedPlanGoal: {
+    ...theme.typography.bodyMedium,
+    color: theme.colors.text,
+    marginBottom: 2,
+  },
+  savedPlanMeta: {
+    ...theme.typography.bodySm,
+    color: theme.colors.textSecondary,
+    marginBottom: 2,
+  },
+  savedPlanDate: {
+    ...theme.typography.caption,
+    color: theme.colors.textTertiary,
+  },
+  createNewButtonContainer: {
+    marginTop: theme.spacing['2xl'],
+  },
+  welcomeBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+    gap: theme.spacing.sm,
+  },
+  welcomeText: {
+    ...theme.typography.bodySm,
+    color: theme.colors.textSecondary,
+    flex: 1,
+  },
+  welcomeClose: {
+    padding: 4,
   },
 });
 

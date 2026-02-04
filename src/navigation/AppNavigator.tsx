@@ -23,6 +23,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 import AIChatScreen from '../screens/AIChatScreen';
 import FitnessPlannerScreen from '../screens/FitnessPlannerScreen';
 import DietPlannerScreen from '../screens/DietPlannerScreen';
+import ProgressScreen from '../screens/ProgressScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -76,6 +77,7 @@ const AppNavigator: React.FC = () => {
           <Stack.Screen name="AIChat" component={AIChatScreen} />
           <Stack.Screen name="FitnessPlanner" component={FitnessPlannerScreen} />
           <Stack.Screen name="DietPlanner" component={DietPlannerScreen} />
+          <Stack.Screen name="Progress" component={ProgressScreen} />
         </>
       ) : (
         <>

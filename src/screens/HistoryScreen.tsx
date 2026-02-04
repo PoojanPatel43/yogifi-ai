@@ -15,7 +15,7 @@ import * as Haptics from '../utils/haptics';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, Session } from '../types';
 import { getSessionHistoryApi } from '../services/api';
-import Colors from '../constants/colors';
+import { theme } from '../constants/theme';
 import { APP_CONFIG } from '../constants/config';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'History'>;
@@ -191,17 +191,10 @@ const HistoryScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const getScoreColor = (score: number | null | undefined): string => {
-    if (!score) return Colors.textMuted;
-    if (score >= 80) return Colors.success;
-    if (score >= 60) return Colors.warning;
-    return Colors.error;
-  };
-
-  const getScoreBadgeStyle = (score: number | null | undefined) => {
-    if (!score) return { bg: Colors.textMuted + '20', text: Colors.textMuted };
-    if (score >= 80) return { bg: Colors.success + '20', text: Colors.success };
-    if (score >= 60) return { bg: Colors.warning + '20', text: Colors.warning };
-    return { bg: Colors.error + '20', text: Colors.error };
+    if (!score) return theme.colors.textTertiary;
+    if (score >= 80) return theme.colors.success;
+    if (score >= 60) return theme.colors.warning;
+    return theme.colors.error;
   };
 
   const renderSectionHeader = (title: string) => (
@@ -214,7 +207,7 @@ const HistoryScreen: React.FC<Props> = ({ navigation }) => {
   );
 
   const renderSessionItem = ({ item }: { item: Session }) => {
-    const scoreBadge = getScoreBadgeStyle(item.overallScore);
+    const scoreColor = getScoreColor(item.overallScore);
 
     return (
       <TouchableOpacity
@@ -226,21 +219,19 @@ const HistoryScreen: React.FC<Props> = ({ navigation }) => {
         activeOpacity={0.7}
       >
         <View style={styles.sessionIcon}>
-          <Ionicons name="fitness" size={22} color={Colors.primary} />
+          <Ionicons name="fitness" size={22} color={theme.colors.textTertiary} />
         </View>
         <View style={styles.sessionInfo}>
           <Text style={styles.sessionPose}>{item.poseName || 'Yoga Session'}</Text>
           <View style={styles.sessionMeta}>
-            <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
+            <Ionicons name="time-outline" size={14} color={theme.colors.textTertiary} />
             <Text style={styles.sessionDuration}>{formatDuration(item.durationSeconds)}</Text>
           </View>
         </View>
-        <View style={[styles.scoreBadge, { backgroundColor: scoreBadge.bg }]}>
-          <Text style={[styles.scoreValue, { color: scoreBadge.text }]}>
-            {item.overallScore ?? '--'}
-          </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+        <Text style={[styles.scoreValue, { color: scoreColor }]}>
+          {item.overallScore ?? '--'}
+        </Text>
+        <Ionicons name="chevron-forward" size={18} color={theme.colors.textTertiary} />
       </TouchableOpacity>
     );
   };
@@ -249,17 +240,17 @@ const HistoryScreen: React.FC<Props> = ({ navigation }) => {
     <View style={styles.filtersContainer}>
       {/* Search */}
       <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color={Colors.textMuted} />
+        <Ionicons name="search" size={20} color={theme.colors.textTertiary} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search by pose name..."
-          placeholderTextColor={Colors.textMuted}
+          placeholderTextColor={theme.colors.textTertiary}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <Ionicons name="close-circle" size={20} color={Colors.textMuted} />
+            <Ionicons name="close-circle" size={20} color={theme.colors.textTertiary} />
           </TouchableOpacity>
         )}
       </View>
@@ -273,12 +264,12 @@ const HistoryScreen: React.FC<Props> = ({ navigation }) => {
             setShowFilters(!showFilters);
           }}
         >
-          <Ionicons name="filter" size={18} color={Colors.primary} />
+          <Ionicons name="filter" size={18} color={theme.colors.primary} />
           <Text style={styles.filterToggleText}>Filters</Text>
           <Ionicons
             name={showFilters ? 'chevron-up' : 'chevron-down'}
             size={16}
-            color={Colors.primary}
+            color={theme.colors.primary}
           />
         </TouchableOpacity>
 
@@ -353,7 +344,7 @@ const HistoryScreen: React.FC<Props> = ({ navigation }) => {
     if (!isLoadingMore) return null;
     return (
       <View style={styles.loadingMore}>
-        <ActivityIndicator size="small" color={Colors.primary} />
+        <ActivityIndicator size="small" color={theme.colors.primary} />
       </View>
     );
   };
@@ -361,7 +352,7 @@ const HistoryScreen: React.FC<Props> = ({ navigation }) => {
   if (isLoading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
         <Text style={styles.loadingText}>Loading history...</Text>
       </View>
     );
@@ -370,7 +361,7 @@ const HistoryScreen: React.FC<Props> = ({ navigation }) => {
   if (error) {
     return (
       <View style={styles.centerContainer}>
-        <Ionicons name="alert-circle" size={48} color={Colors.error} />
+        <Ionicons name="alert-circle" size={48} color={theme.colors.error} />
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={() => fetchSessions()}>
           <Text style={styles.retryButtonText}>Retry</Text>
@@ -383,7 +374,7 @@ const HistoryScreen: React.FC<Props> = ({ navigation }) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={Colors.text} />
+          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Session History</Text>
         <View style={styles.placeholder} />
@@ -401,7 +392,7 @@ const HistoryScreen: React.FC<Props> = ({ navigation }) => {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor={Colors.primary}
+            tintColor={theme.colors.primary}
           />
         }
         onEndReached={handleLoadMore}
@@ -409,7 +400,7 @@ const HistoryScreen: React.FC<Props> = ({ navigation }) => {
         ListFooterComponent={renderFooter}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="calendar-outline" size={64} color={Colors.textMuted} />
+            <Ionicons name="calendar-outline" size={64} color={theme.colors.textTertiary} />
             <Text style={styles.emptyTitle}>
               {searchQuery || filterBy !== 'all' ? 'No matching sessions' : 'No sessions yet'}
             </Text>
@@ -436,61 +427,62 @@ const HistoryScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: theme.colors.background,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.background,
-    padding: 20,
+    backgroundColor: theme.colors.background,
+    padding: theme.spacing.md,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: theme.spacing.sm,
     paddingTop: 60,
-    paddingBottom: 16,
+    paddingBottom: theme.spacing.sm,
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: theme.spacing.lg,
+    height: theme.spacing.lg,
     justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: Colors.text,
+    ...theme.typography.h4,
+    color: theme.colors.text,
   },
   placeholder: {
-    width: 40,
+    width: theme.spacing.lg,
   },
   filtersContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: theme.spacing.sm,
+    paddingBottom: theme.spacing.xs,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 12,
-    gap: 8,
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs + 4,
+    marginBottom: theme.spacing.xs + 4,
+    gap: theme.spacing.xs,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
-    color: Colors.text,
+    ...theme.typography.body,
+    color: theme.colors.text,
   },
   filterRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: theme.spacing.xs,
   },
   filterToggle: {
     flexDirection: 'row',
@@ -498,115 +490,120 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   filterToggleText: {
-    fontSize: 14,
-    color: Colors.primary,
-    fontWeight: '500',
+    ...theme.typography.bodySmMedium,
+    color: theme.colors.primary,
   },
   sortPills: {
     flexDirection: 'row',
-    gap: 8,
+    gap: theme.spacing.xs,
   },
   sortPill: {
-    paddingHorizontal: 12,
+    paddingHorizontal: theme.spacing.xs + 4,
     paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: Colors.cardBackground,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.card,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
   },
   sortPillActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   },
   sortPillText: {
+    ...theme.typography.bodySm,
     fontSize: 13,
-    color: Colors.textLight,
+    color: theme.colors.textSecondary,
   },
   sortPillTextActive: {
-    color: '#FFFFFF',
+    color: theme.colors.textInverse,
     fontWeight: '500',
   },
   expandedFilters: {
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+    padding: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
   },
   filterLabel: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    marginBottom: 8,
-    fontWeight: '500',
+    ...theme.typography.caption,
+    color: theme.colors.textTertiary,
+    marginBottom: theme.spacing.xs,
   },
   filterPills: {
     flexDirection: 'row',
-    gap: 8,
+    gap: theme.spacing.xs,
   },
   filterPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: Colors.background,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.radius.xl,
+    backgroundColor: theme.colors.background,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: theme.colors.border,
   },
   filterPillActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   },
   filterPillText: {
-    fontSize: 14,
-    color: Colors.textLight,
+    ...theme.typography.bodySm,
+    color: theme.colors.textSecondary,
   },
   filterPillTextActive: {
-    color: '#FFFFFF',
+    color: theme.colors.textInverse,
     fontWeight: '500',
   },
   resultsCount: {
+    ...theme.typography.bodySm,
     fontSize: 13,
-    color: Colors.textMuted,
+    color: theme.colors.textTertiary,
     marginTop: 4,
   },
   listContent: {
-    padding: 16,
+    padding: theme.spacing.sm,
     paddingTop: 0,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: theme.spacing.xs + 4,
+    paddingTop: theme.spacing.sm,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text,
+    ...theme.typography.caption,
+    color: theme.colors.textTertiary,
   },
   sectionCount: {
+    ...theme.typography.bodySm,
     fontSize: 13,
-    color: Colors.textMuted,
+    color: theme.colors.textTertiary,
   },
   sessionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+    padding: theme.spacing.sm,
+    marginBottom: theme.spacing.xs + 2,
   },
   sessionIcon: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
   sessionInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: theme.spacing.xs + 4,
   },
   sessionPose: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: Colors.text,
+    ...theme.typography.bodyMedium,
+    color: theme.colors.text,
     marginBottom: 4,
   },
   sessionMeta: {
@@ -615,74 +612,67 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   sessionDuration: {
+    ...theme.typography.bodySm,
     fontSize: 13,
-    color: Colors.textMuted,
-  },
-  scoreBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    marginRight: 8,
+    color: theme.colors.textTertiary,
   },
   scoreValue: {
-    fontSize: 16,
-    fontWeight: '700',
+    ...theme.typography.h3,
+    fontSize: 22,
+    marginRight: theme.spacing.xs,
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: Colors.textLight,
+    marginTop: theme.spacing.xs + 4,
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
   },
   errorText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: Colors.error,
+    marginTop: theme.spacing.xs + 4,
+    ...theme.typography.body,
+    color: theme.colors.error,
     textAlign: 'center',
   },
   retryButton: {
-    marginTop: 16,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    backgroundColor: Colors.primary,
-    borderRadius: 8,
+    marginTop: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs + 4,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radius.sm,
   },
   retryButtonText: {
-    color: Colors.background,
-    fontSize: 16,
-    fontWeight: '600',
+    ...theme.typography.button,
+    color: theme.colors.textInverse,
   },
   loadingMore: {
-    paddingVertical: 16,
+    paddingVertical: theme.spacing.sm,
     alignItems: 'center',
   },
   emptyContainer: {
     alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 40,
+    paddingVertical: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.lg,
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: Colors.text,
-    marginTop: 16,
-    marginBottom: 8,
+    ...theme.typography.h4,
+    color: theme.colors.text,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
   },
   emptyText: {
-    fontSize: 14,
-    color: Colors.textMuted,
+    ...theme.typography.bodySm,
+    color: theme.colors.textTertiary,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: theme.spacing.md,
   },
   startButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radius.md,
+    paddingVertical: theme.spacing.xs + 6,
+    paddingHorizontal: theme.spacing.md,
   },
   startButtonText: {
-    color: Colors.background,
-    fontSize: 16,
-    fontWeight: '600',
+    ...theme.typography.button,
+    color: theme.colors.textInverse,
   },
 });
 

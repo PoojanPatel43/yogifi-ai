@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,15 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Animatable from 'react-native-animatable';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { theme } from '../constants/theme';
-import { sendChatMessageApi } from '../services/api';
+import { sendChatMessageApi, getChatHistoryApi } from '../services/api';
+import { getItem, setItem } from '../utils/storage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AIChat'>;
 
@@ -35,8 +37,57 @@ const AIChatScreen: React.FC<Props> = ({ navigation }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | undefined>();
+  const [showWelcome, setShowWelcome] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+
+  const loadChatHistory = useCallback(async () => {
+    setIsLoadingHistory(true);
+    setLoadError(null);
+    try {
+      const result = await getChatHistoryApi();
+      if (result.success && result.data && result.data.length > 0) {
+        const mapped: ChatMessage[] = result.data.map((item: any) => ({
+          id: item.conversationId || Date.now().toString() + Math.random().toString(),
+          role: item.role as 'user' | 'assistant',
+          content: item.message,
+        }));
+        setMessages(mapped);
+        setConversationId(result.data[0].conversationId);
+      }
+    } catch {
+      setLoadError('Failed to load chat history. Please try again.');
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadChatHistory();
+  }, [loadChatHistory]);
+
+  useEffect(() => {
+    const checkWelcome = async () => {
+      const hasSeen = await getItem('has_seen_ai_chat');
+      if (!hasSeen) {
+        setShowWelcome(true);
+      }
+    };
+    checkWelcome();
+  }, []);
+
+  const dismissWelcome = async () => {
+    await setItem('has_seen_ai_chat', 'true');
+    setShowWelcome(false);
+  };
+
+  const handleNewChat = useCallback(() => {
+    setMessages([]);
+    setConversationId(undefined);
+    setLoadError(null);
+  }, []);
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || isLoading) return;
@@ -147,28 +198,40 @@ const AIChatScreen: React.FC<Props> = ({ navigation }) => {
     </View>
   );
 
-  return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <View style={styles.headerIcon}>
-            <Ionicons name="sparkles" size={18} color={theme.colors.primaryDark} />
-          </View>
-          <Text style={styles.headerTitle}>AI Wellness Coach</Text>
+  const renderMainContent = () => {
+    if (isLoadingHistory) {
+      return (
+        <View style={styles.centeredContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primaryDark} />
         </View>
-        <View style={{ width: 40 }} />
-      </View>
+      );
+    }
 
-      {/* Messages */}
-      <KeyboardAvoidingView
-        style={styles.chatArea}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
-      >
+    if (loadError && messages.length === 0) {
+      return (
+        <View style={styles.centeredContainer}>
+          <Ionicons name="cloud-offline-outline" size={48} color={theme.colors.textSecondary} />
+          <Text style={styles.errorText}>{loadError}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadChatHistory}>
+            <Ionicons name="refresh" size={18} color={theme.colors.textInverse} />
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return (
+      <>
+        {showWelcome && (
+          <Animatable.View animation="fadeIn" duration={400} style={styles.welcomeBanner}>
+            <Text style={styles.welcomeText}>
+              Ask anything about yoga, fitness, nutrition, or wellness. Your AI coach is here to help.
+            </Text>
+            <TouchableOpacity style={styles.welcomeClose} onPress={dismissWelcome}>
+              <Ionicons name="close-circle-outline" size={18} color={theme.colors.textTertiary} />
+            </TouchableOpacity>
+          </Animatable.View>
+        )}
         {messages.length === 0 ? (
           renderEmptyState()
         ) : (
@@ -183,6 +246,35 @@ const AIChatScreen: React.FC<Props> = ({ navigation }) => {
             ListFooterComponent={renderTypingIndicator}
           />
         )}
+      </>
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <View style={styles.headerIcon}>
+            <Ionicons name="sparkles" size={18} color={theme.colors.primaryDark} />
+          </View>
+          <Text style={styles.headerTitle}>AI Wellness Coach</Text>
+        </View>
+        <TouchableOpacity style={styles.newChatButton} onPress={handleNewChat}>
+          <Ionicons name="create-outline" size={22} color={theme.colors.primaryDark} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Messages */}
+      <KeyboardAvoidingView
+        style={styles.chatArea}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}
+      >
+        {renderMainContent()}
 
         {/* Input Bar */}
         <View style={styles.inputBar}>
@@ -255,11 +347,44 @@ const styles = StyleSheet.create({
     ...theme.typography.h3,
     color: theme.colors.text,
   },
+  newChatButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   chatArea: {
     flex: 1,
     maxWidth: 800,
     width: '100%',
     alignSelf: 'center',
+  },
+  centeredContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing['2xl'],
+    gap: theme.spacing.md,
+  },
+  errorText: {
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    backgroundColor: theme.colors.primaryDark,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.radius.lg,
+  },
+  retryButtonText: {
+    ...theme.typography.bodySm,
+    color: theme.colors.textInverse,
+    fontWeight: '600',
   },
   messagesList: {
     paddingHorizontal: theme.spacing.screen,
@@ -290,11 +415,11 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.xl,
   },
   userBubble: {
-    backgroundColor: theme.colors.primaryMuted,
+    backgroundColor: theme.colors.accentLight,
     borderBottomRightRadius: theme.spacing.xs,
   },
   aiBubble: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.card,
     borderBottomLeftRadius: theme.spacing.xs,
     borderWidth: 1,
     borderColor: theme.colors.primaryLight,
@@ -402,6 +527,27 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     backgroundColor: theme.colors.borderLight,
+  },
+  welcomeBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+    gap: theme.spacing.sm,
+    marginHorizontal: theme.spacing.screen,
+    marginTop: theme.spacing.md,
+  },
+  welcomeText: {
+    ...theme.typography.bodySm,
+    color: theme.colors.textSecondary,
+    flex: 1,
+  },
+  welcomeClose: {
+    padding: 4,
   },
 });
 

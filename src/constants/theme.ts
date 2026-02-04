@@ -1,70 +1,70 @@
 // Yogifi AI Premium Wellness Platform — Theme System
-// Future.co-inspired design tokens
+// Deep Wine / Burgundy / Muted Rose / Dusty Pink / Soft Blush palette
 
 export const theme = {
   colors: {
-    // Primary - Lavender
-    primary: '#c9c1ea',
-    primaryLight: '#ddd4f3',
-    primaryDark: '#b0a6d6',
-    primaryMuted: 'rgba(201, 193, 234, 0.15)',
-    primaryGlow: 'rgba(201, 193, 234, 0.3)',
+    // Primary - Muted Rose
+    primary: '#a4546e',
+    primaryLight: '#c78a9d',
+    primaryDark: '#6d003f',
+    primaryMuted: 'rgba(164, 84, 110, 0.12)',
+    primaryGlow: 'rgba(164, 84, 110, 0.25)',
 
-    // Secondary - Sky Blue
-    secondary: '#aac7e2',
-    secondaryLight: '#c5dbed',
-    secondaryDark: '#8cb3d4',
-    secondaryMuted: 'rgba(170, 199, 226, 0.15)',
+    // Secondary - Dusty Pink
+    secondary: '#c78a9d',
+    secondaryLight: '#f7ccdb',
+    secondaryDark: '#a4546e',
+    secondaryMuted: 'rgba(199, 138, 157, 0.12)',
 
-    // Accent - Peach (high-energy CTA)
-    accent: '#ffcdc1',
-    accentLight: '#ffe0d8',
-    accentMuted: 'rgba(255, 205, 193, 0.15)',
+    // Accent - Deep Wine (high-energy CTA)
+    accent: '#6d003f',
+    accentLight: '#f7ccdb',
+    accentMuted: 'rgba(109, 0, 63, 0.10)',
 
     // Semantic
-    success: '#aac7e2',
-    successLight: '#c5dbed',
-    successMuted: 'rgba(170, 199, 226, 0.15)',
-    error: '#f1bfd5',
-    errorLight: '#f8dce8',
-    errorMuted: 'rgba(241, 191, 213, 0.15)',
-    warning: '#f1bfd5',
-    warningLight: '#f8dce8',
-    warningMuted: 'rgba(241, 191, 213, 0.15)',
+    success: '#4a8c6f',
+    successLight: '#e8f5ee',
+    successMuted: 'rgba(74, 140, 111, 0.12)',
+    error: '#8a2f2e',
+    errorLight: 'rgba(138, 47, 46, 0.10)',
+    errorMuted: 'rgba(138, 47, 46, 0.06)',
+    warning: '#b8860b',
+    warningLight: 'rgba(184, 134, 11, 0.10)',
+    warningMuted: 'rgba(184, 134, 11, 0.06)',
 
-    // Neutrals - White background (Future.co style)
+    // Neutrals
     background: '#ffffff',
     surface: '#ffffff',
     surfaceElevated: '#ffffff',
-    card: '#fafafa',
-    border: 'rgba(0, 0, 0, 0.08)',
-    borderLight: 'rgba(0, 0, 0, 0.05)',
+    card: '#faf7f8',
+    border: 'rgba(109, 0, 63, 0.08)',
+    borderLight: 'rgba(109, 0, 63, 0.05)',
 
-    // Text - Black (Future.co style)
-    text: '#0a0a0a',
-    textSecondary: '#2d2d2d',
-    textTertiary: '#6b6b6b',
+    // Text
+    text: '#1a1a1a',
+    textSecondary: '#4a4a4a',
+    textTertiary: '#8a8a8a',
     textInverse: '#ffffff',
 
     // Overlay / Glass
-    overlay: 'rgba(10, 10, 10, 0.8)',
+    overlay: 'rgba(26, 26, 26, 0.8)',
     glass: 'rgba(255, 255, 255, 0.95)',
-    glassBorder: 'rgba(0, 0, 0, 0.06)',
-    glassDark: 'rgba(10, 10, 10, 0.3)',
+    glassBorder: 'rgba(109, 0, 63, 0.06)',
+    glassDark: 'rgba(26, 26, 26, 0.3)',
   },
 
   gradients: {
-    primary: ['#c9c1ea', '#aac7e2'] as readonly string[],
-    primaryToSecondary: ['#c9c1ea', '#aac7e2'] as readonly string[],
-    hero: ['#ffffff', '#ece4c1'] as readonly string[],
-    splash: ['#c9c1ea', '#aac7e2', '#ece4c1'] as readonly string[],
-    surface: ['#ffffff', '#fafafa'] as readonly string[],
-    sunset: ['#ffcdc1', '#f1bfd5'] as readonly string[],
-    success: ['#aac7e2', '#c9c1ea'] as readonly string[],
-    card: ['rgba(201, 193, 234, 0.06)', 'rgba(170, 199, 226, 0.03)'] as readonly string[],
-    accent: ['#ffcdc1', '#f1bfd5'] as readonly string[],
-    dark: ['#0a0a0a', '#2d2d2d'] as readonly string[],
-    mesh: ['#c9c1ea', '#aac7e2', '#f1bfd5', '#ece4c1'] as readonly string[],
+    primary: ['#a4546e', '#c78a9d'] as readonly string[],
+    primaryToSecondary: ['#a4546e', '#c78a9d'] as readonly string[],
+    hero: ['#ffffff', '#f7ccdb'] as readonly string[],
+    splash: ['#6d003f', '#a4546e', '#f7ccdb'] as readonly string[],
+    surface: ['#ffffff', '#faf7f8'] as readonly string[],
+    sunset: ['#a4546e', '#f7ccdb'] as readonly string[],
+    success: ['#4a8c6f', '#6aab8e'] as readonly string[],
+    card: ['rgba(164, 84, 110, 0.04)', 'rgba(199, 138, 157, 0.02)'] as readonly string[],
+    accent: ['#6d003f', '#a4546e'] as readonly string[],
+    dark: ['#1a1a1a', '#2d2d2d'] as readonly string[],
+    mesh: ['#6d003f', '#a4546e', '#c78a9d', '#f7ccdb'] as readonly string[],
   },
 
   typography: {

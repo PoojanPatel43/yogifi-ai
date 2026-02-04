@@ -101,7 +101,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             )}
 
             {/* Inputs */}
-            <Animatable.View animation="fadeInUp" delay={100} duration={500} style={styles.inputsContainer}>
+            <Animatable.View animation="fadeIn" delay={100} duration={500} style={styles.inputsContainer}>
               <AnimatedInput
                 icon="mail-outline"
                 label="Email"
@@ -126,13 +126,13 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             </Animatable.View>
 
             {/* Sign In Button */}
-            <Animatable.View animation="fadeInUp" delay={200} duration={500}>
+            <Animatable.View animation="fadeIn" delay={200} duration={500}>
               <GradientButton
                 title="Sign In"
                 onPress={handleLogin}
                 loading={isLoading}
                 disabled={isLoading}
-                variant="accent"
+                variant="dark"
                 size="lg"
                 style={styles.signInButton}
               />
@@ -224,10 +224,12 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   inputsContainer: {
-    marginBottom: 8,
+    marginBottom: 16,
+    gap: 8,
   },
   signInButton: {
     marginTop: 8,
+    width: '100%',
   },
   dividerRow: {
     flexDirection: 'row',

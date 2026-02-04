@@ -99,7 +99,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             )}
 
             {/* Inputs */}
-            <Animatable.View animation="fadeInUp" delay={100} duration={500} style={styles.inputsContainer}>
+            <Animatable.View animation="fadeIn" delay={100} duration={500} style={styles.inputsContainer}>
               <AnimatedInput
                 icon="person-outline"
                 label="Full Name"
@@ -145,13 +145,13 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             </Animatable.View>
 
             {/* Create Account Button */}
-            <Animatable.View animation="fadeInUp" delay={200} duration={500}>
+            <Animatable.View animation="fadeIn" delay={200} duration={500}>
               <GradientButton
                 title="Create Account"
                 onPress={handleRegister}
                 loading={isLoading}
                 disabled={isLoading}
-                variant="accent"
+                variant="dark"
                 size="lg"
                 style={styles.createButton}
               />
@@ -243,7 +243,8 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   inputsContainer: {
-    marginBottom: 8,
+    marginBottom: 16,
+    gap: 8,
   },
   passwordHint: {
     ...theme.typography.caption,
@@ -253,6 +254,7 @@ const styles = StyleSheet.create({
   },
   createButton: {
     marginTop: 8,
+    width: '100%',
   },
   dividerRow: {
     flexDirection: 'row',

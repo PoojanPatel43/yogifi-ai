@@ -36,4 +36,13 @@ public interface SessionRepository extends JpaRepository<Session, UUID> {
 
     @Query("SELECT s FROM Session s WHERE s.user.id = :userId AND s.createdAt >= :startDate ORDER BY s.createdAt DESC")
     List<Session> findRecentSessionsByUserId(UUID userId, LocalDateTime startDate);
+
+    @Query("SELECT DISTINCT CAST(s.createdAt AS LocalDate) FROM Session s WHERE s.user.id = :userId AND s.status = 'COMPLETED' ORDER BY CAST(s.createdAt AS LocalDate) DESC")
+    List<java.time.LocalDate> findCompletedSessionDatesByUserId(UUID userId);
+
+    @Query("SELECT COUNT(DISTINCT s.pose.id) FROM Session s WHERE s.user.id = :userId AND s.status = 'COMPLETED'")
+    Integer countDistinctPosesByUserId(UUID userId);
+
+    @Query("SELECT s.pose.name, COUNT(s) as cnt FROM Session s WHERE s.user.id = :userId AND s.status = 'COMPLETED' GROUP BY s.pose.name ORDER BY cnt DESC")
+    List<Object[]> findMostPracticedPoseByUserId(UUID userId);
 }
