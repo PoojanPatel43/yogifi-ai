@@ -63,6 +63,8 @@ public class AnthropicService {
             }
             requestBody.set("messages", messagesArray);
 
+            log.debug("Sending request to Anthropic API: {}", requestBody.toPrettyString());
+
             String responseBody = webClient.post()
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(requestBody)
@@ -81,6 +83,18 @@ public class AnthropicService {
 
         } catch (IllegalStateException e) {
             throw e;
+        } catch (org.springframework.web.reactive.function.client.WebClientResponseException e) {
+            log.error("Error calling Anthropic API: {} - Response body: {}", e.getMessage(), e.getResponseBodyAsString());
+            String msg = e.getMessage() != null ? e.getMessage() : "Unknown error";
+            String responseBody = e.getResponseBodyAsString();
+
+            if (msg.contains("401") || msg.contains("Unauthorized") || msg.contains("invalid x-api-key")) {
+                throw new IllegalStateException("AI service API key is invalid or missing. Please check the ANTHROPIC_API_KEY configuration.");
+            }
+            if (msg.contains("400") || msg.contains("Bad Request")) {
+                throw new RuntimeException("AI service request error: " + responseBody);
+            }
+            throw new RuntimeException("AI service is temporarily unavailable. Please try again in a moment.");
         } catch (Exception e) {
             log.error("Error calling Anthropic API: {}", e.getMessage(), e);
             String msg = e.getMessage() != null ? e.getMessage() : "Unknown error";
