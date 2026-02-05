@@ -34,7 +34,9 @@ services:
       DB_USERNAME: postgres
       DB_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      AI_PROVIDER: ${AI_PROVIDER:-gemini}
+      AI_API_KEY: ${AI_API_KEY}
+      AI_API_URL: ${AI_API_URL}
     ports:
       - "8080:8080"
     depends_on:
