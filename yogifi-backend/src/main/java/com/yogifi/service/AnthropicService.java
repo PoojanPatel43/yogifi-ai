@@ -65,7 +65,7 @@ public class AnthropicService {
 
             String responseBody = webClient.post()
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(requestBody.toString())
+                .bodyValue(requestBody)
                 .retrieve()
                 .bodyToMono(String.class)
                 .block();
