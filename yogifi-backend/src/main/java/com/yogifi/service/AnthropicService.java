@@ -31,9 +31,14 @@ public class AnthropicService {
             @Value("${anthropic.api.key}") String apiKey,
             ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
+
+        if (apiKey == null || apiKey.isBlank()) {
+            log.warn("ANTHROPIC_API_KEY is not set. AI features will not work until a valid API key is configured.");
+        }
+
         this.webClient = WebClient.builder()
             .baseUrl(apiUrl)
-            .defaultHeader("x-api-key", apiKey)
+            .defaultHeader("x-api-key", apiKey != null ? apiKey : "")
             .defaultHeader("anthropic-version", "2023-06-01")
             .defaultHeader("Content-Type", "application/json")
             .build();
@@ -41,6 +46,9 @@ public class AnthropicService {
 
     public String chat(String systemPrompt, List<Map<String, String>> messages) {
         try {
+            if (webClient == null) {
+                throw new IllegalStateException("AI service is not configured. Please set the ANTHROPIC_API_KEY environment variable.");
+            }
             ObjectNode requestBody = objectMapper.createObjectNode();
             requestBody.put("model", model);
             requestBody.put("max_tokens", maxTokens);
@@ -71,9 +79,15 @@ public class AnthropicService {
             log.warn("Unexpected Anthropic response format: {}", responseBody);
             return "I apologize, but I encountered an issue processing your request.";
 
+        } catch (IllegalStateException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Error calling Anthropic API: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to get AI response: " + e.getMessage());
+            String msg = e.getMessage() != null ? e.getMessage() : "Unknown error";
+            if (msg.contains("401") || msg.contains("Unauthorized") || msg.contains("invalid x-api-key")) {
+                throw new IllegalStateException("AI service API key is invalid or missing. Please check the ANTHROPIC_API_KEY configuration.");
+            }
+            throw new RuntimeException("AI service is temporarily unavailable. Please try again in a moment.");
         }
     }
 }

@@ -140,6 +140,29 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handle AI service configuration errors
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalStateException(IllegalStateException ex) {
+        log.error("Service configuration error: {}", ex.getMessage());
+        return ResponseEntity
+            .status(HttpStatus.SERVICE_UNAVAILABLE)
+            .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    /**
+     * Handle runtime errors (includes AI service failures)
+     */
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRuntimeException(RuntimeException ex) {
+        log.error("Runtime error: {}", ex.getMessage(), ex);
+        String message = ex.getMessage() != null ? ex.getMessage() : "An unexpected error occurred. Please try again later.";
+        return ResponseEntity
+            .status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(ApiResponse.error(message));
+    }
+
+    /**
      * Handle all other exceptions
      */
     @ExceptionHandler(Exception.class)

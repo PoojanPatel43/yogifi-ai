@@ -3,47 +3,59 @@
 
 export const theme = {
   colors: {
-    // Primary - Muted Rose
-    primary: '#a4546e',
-    primaryLight: '#c78a9d',
-    primaryDark: '#6d003f',
-    primaryMuted: 'rgba(164, 84, 110, 0.12)',
-    primaryGlow: 'rgba(164, 84, 110, 0.25)',
+    // Primary - Deep Wine (brand color)
+    primary: '#6d003f',
+    primaryLight: '#a4546e',
+    primaryDark: '#4a0028',
+    primaryMuted: 'rgba(109, 0, 63, 0.12)',
+    primaryGlow: 'rgba(109, 0, 63, 0.25)',
 
-    // Secondary - Dusty Pink
-    secondary: '#c78a9d',
-    secondaryLight: '#f7ccdb',
-    secondaryDark: '#a4546e',
-    secondaryMuted: 'rgba(199, 138, 157, 0.12)',
+    // Secondary - Muted Rose
+    secondary: '#a4546e',
+    secondaryLight: '#c78a9d',
+    secondaryDark: '#6d003f',
+    secondaryMuted: 'rgba(164, 84, 110, 0.12)',
 
-    // Accent - Deep Wine (high-energy CTA)
-    accent: '#6d003f',
-    accentLight: '#f7ccdb',
-    accentMuted: 'rgba(109, 0, 63, 0.10)',
+    // Accent - Soft Pink Blush (CTA buttons)
+    accent: '#f7ccdb',
+    accentDark: '#c78a9d',
+    accentLight: '#fce7f0',
+    accentMuted: 'rgba(247, 204, 219, 0.12)',
+
+    // Error - Deep Rose
+    error: '#8a2f2e',
+    errorLight: 'rgba(138, 47, 46, 0.10)',
+    errorMuted: 'rgba(138, 47, 46, 0.06)',
+
+    // Gradient Blob Colors (for animated backgrounds - Athleticon style)
+    blobPurple: '#9333ea',
+    blobPurpleLight: '#db2777',
+    blobBlue: '#3b82f6',
+    blobBlueLight: '#8b5cf6',
+    blobPink: '#ec4899',
+    blobPinkLight: '#f472b6',
 
     // Semantic
     success: '#4a8c6f',
     successLight: '#e8f5ee',
     successMuted: 'rgba(74, 140, 111, 0.12)',
-    error: '#8a2f2e',
-    errorLight: 'rgba(138, 47, 46, 0.10)',
-    errorMuted: 'rgba(138, 47, 46, 0.06)',
     warning: '#b8860b',
     warningLight: 'rgba(184, 134, 11, 0.10)',
     warningMuted: 'rgba(184, 134, 11, 0.06)',
 
-    // Neutrals
+    // Neutrals (clean, editorial feel)
     background: '#ffffff',
+    backgroundLight: '#f5f5f5',
     surface: '#ffffff',
     surfaceElevated: '#ffffff',
     card: '#faf7f8',
     border: 'rgba(109, 0, 63, 0.08)',
     borderLight: 'rgba(109, 0, 63, 0.05)',
 
-    // Text
-    text: '#1a1a1a',
-    textSecondary: '#4a4a4a',
-    textTertiary: '#8a8a8a',
+    // Text (strong contrast for readability)
+    text: '#1f2937',
+    textSecondary: '#4b5563',
+    textTertiary: '#9ca3af',
     textInverse: '#ffffff',
 
     // Overlay / Glass
@@ -54,17 +66,21 @@ export const theme = {
   },
 
   gradients: {
-    primary: ['#a4546e', '#c78a9d'] as readonly string[],
-    primaryToSecondary: ['#a4546e', '#c78a9d'] as readonly string[],
+    primary: ['#6d003f', '#a4546e'] as readonly string[],
+    primaryToSecondary: ['#6d003f', '#c78a9d'] as readonly string[],
     hero: ['#ffffff', '#f7ccdb'] as readonly string[],
     splash: ['#6d003f', '#a4546e', '#f7ccdb'] as readonly string[],
     surface: ['#ffffff', '#faf7f8'] as readonly string[],
     sunset: ['#a4546e', '#f7ccdb'] as readonly string[],
     success: ['#4a8c6f', '#6aab8e'] as readonly string[],
     card: ['rgba(164, 84, 110, 0.04)', 'rgba(199, 138, 157, 0.02)'] as readonly string[],
-    accent: ['#6d003f', '#a4546e'] as readonly string[],
+    accent: ['#c78a9d', '#f7ccdb'] as readonly string[],
     dark: ['#1a1a1a', '#2d2d2d'] as readonly string[],
     mesh: ['#6d003f', '#a4546e', '#c78a9d', '#f7ccdb'] as readonly string[],
+    // Athleticon-style animated blobs
+    blobPurple: ['#9333ea', '#db2777'] as readonly string[],
+    blobBlue: ['#3b82f6', '#8b5cf6'] as readonly string[],
+    blobPink: ['#ec4899', '#f472b6'] as readonly string[],
   },
 
   typography: {
