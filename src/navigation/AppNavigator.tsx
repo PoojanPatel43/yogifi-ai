@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { theme } from '../constants/theme';
 
 // Import screens
+import { Platform } from 'react-native';
 import LandingScreen from '../screens/LandingScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -14,6 +15,7 @@ import PoseSelectionScreen from '../screens/PoseSelectionScreen';
 import PoseInstructionScreen from '../screens/PoseInstructionScreen';
 import CameraSetupScreen from '../screens/CameraSetupScreen';
 import CameraScreen from '../screens/CameraScreen';
+import WebCameraScreen from '../screens/WebCameraScreen';
 import SessionCompleteScreen from '../screens/SessionCompleteScreen';
 import AICoachScreen from '../screens/AICoachScreen';
 import SessionDetailsScreen from '../screens/SessionDetailsScreen';
@@ -57,7 +59,7 @@ const AppNavigator: React.FC = () => {
           <Stack.Screen name="CameraSetup" component={CameraSetupScreen} />
           <Stack.Screen
             name="Camera"
-            component={CameraScreen}
+            component={Platform.OS === 'web' ? WebCameraScreen : CameraScreen}
             options={{ animation: 'slide_from_bottom' }}
           />
           <Stack.Screen

@@ -5,12 +5,12 @@
 
 export const APP_CONFIG = {
   // Pose Detection Settings
-  ENABLE_POSE_DETECTION: false, // Turn OFF real pose detection for now
-  USE_MOCK_SCORES: true, // Use simulated scores
+  ENABLE_POSE_DETECTION: true, // Enable real pose detection for web
+  USE_MOCK_SCORES: false, // Use real pose evaluation scores
   ENABLE_VOICE_FEEDBACK: false, // Disable voice guidance
-  ENABLE_SKELETON_OVERLAY: false, // Disable skeleton drawing
-  ENABLE_FEEDBACK_OVERLAY: false, // Disable real-time feedback messages
-  ENABLE_DEBUG_OVERLAY: false, // Disable debug info
+  ENABLE_SKELETON_OVERLAY: true, // Enable skeleton drawing
+  ENABLE_FEEDBACK_OVERLAY: true, // Enable real-time feedback messages
+  ENABLE_DEBUG_OVERLAY: true, // Enable debug info for testing
   ENABLE_REFERENCE_OVERLAY: false, // Disable reference pose overlay
 
   // Mock Score Settings
