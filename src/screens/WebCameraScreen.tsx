@@ -35,6 +35,22 @@ export default function WebCameraScreen({ navigation, route }: Props) {
   const [detectorStatus, setDetectorStatus] = useState<any>(null);
   const [score, setScore] = useState(0);
 
+  // Get dynamic score color based on performance
+  const getScoreColor = (score: number): string => {
+    if (score >= 85) return '#4CAF50'; // Green - Excellent
+    if (score >= 70) return '#FFC107'; // Yellow - Good
+    if (score >= 50) return '#FF9800'; // Orange - Needs work
+    return '#F44336'; // Red - Keep trying
+  };
+
+  // Get feedback message based on score
+  const getFeedbackMessage = (score: number): string => {
+    if (score >= 85) return 'Excellent form!';
+    if (score >= 70) return 'Good progress!';
+    if (score >= 50) return 'Keep adjusting';
+    return 'Focus on alignment';
+  };
+
   // Initialize camera and pose detector
   useEffect(() => {
     if (Platform.OS !== 'web') {
@@ -247,7 +263,12 @@ export default function WebCameraScreen({ navigation, route }: Props) {
           <View style={styles.feedbackContainer}>
             <View style={styles.scoreBox}>
               <Text style={styles.scoreLabel}>Score</Text>
-              <Text style={styles.scoreValue}>{Math.round(score)}</Text>
+              <Text style={[styles.scoreValue, { color: getScoreColor(score) }]}>
+                {Math.round(score)}
+              </Text>
+              <Text style={[styles.feedbackText, { color: getScoreColor(score) }]}>
+                {getFeedbackMessage(score)}
+              </Text>
             </View>
 
             <View style={styles.statusBox}>
@@ -334,9 +355,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   scoreValue: {
-    color: theme.colors.success,
     fontSize: 32,
     fontWeight: '700',
+  },
+  feedbackText: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 4,
   },
   statusBox: {
     backgroundColor: 'rgba(0,0,0,0.7)',
