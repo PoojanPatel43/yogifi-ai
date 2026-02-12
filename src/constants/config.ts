@@ -80,6 +80,10 @@ export const ENCOURAGEMENT_MESSAGES = [
   'Beautiful practice',
   'You got this!',
   'Breathe and relax',
+  'Feel the stretch',
+  'Mind and body connected',
+  'Perfect alignment!',
+  'Hold that pose',
 ];
 
 export const getRandomEncouragement = () => {
