@@ -30,6 +30,7 @@ export const APP_CONFIG = {
   // Session Settings
   MIN_SESSION_DURATION_SECONDS: 10, // Minimum session to count
   DEFAULT_TARGET_DURATION_SECONDS: 60, // Default pose hold target
+  BREATHING_REMINDER_INTERVAL_SECONDS: 15, // Interval for breathing reminders
 
   // UI Settings
   ENABLE_HAPTIC_FEEDBACK: true,
