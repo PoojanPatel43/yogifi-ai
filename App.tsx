@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import {
+  Inter_300Light,
   Inter_400Regular,
   Inter_500Medium,
   Inter_600SemiBold,
@@ -19,6 +20,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({
+    Inter_300Light,
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
