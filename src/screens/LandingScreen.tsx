@@ -216,8 +216,8 @@ const LandingScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.sectionLabel}>Your Practice</Text>
             <Text style={[styles.workoutsTitle, isDesktop && styles.workoutsTitleDesktop]}>
               Customized{'\n'}
-              <Text style={styles.workoutsTitleItalic}>Workouts </Text>
-              for You
+              <Text style={styles.workoutsTitleItalic}>Workouts</Text>
+              <Text style={styles.workoutsTitleLight}> for You</Text>
             </Text>
             <Text style={styles.workoutsDesc}>
               Individualized programs are tailored specifically to your body, lifestyle, and
@@ -878,6 +878,10 @@ const styles = StyleSheet.create({
   },
   workoutsTitleItalic: {
     fontStyle: 'italic',
+    fontWeight: '300',
+    fontFamily: 'Inter_300Light',
+  },
+  workoutsTitleLight: {
     fontWeight: '300',
     fontFamily: 'Inter_300Light',
   },
