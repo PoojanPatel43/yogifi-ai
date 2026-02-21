@@ -634,10 +634,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   phoneFrame: {
-    width: 220,
-    height: 400,
+    width: 260,
+    height: 480,
     backgroundColor: '#fff',
-    borderRadius: 32,
+    borderRadius: 40,
     padding: 12,
     ...Platform.select({
       web: {
@@ -655,14 +655,14 @@ const styles = StyleSheet.create({
   phoneScreen: {
     flex: 1,
     backgroundColor: '#f5f5f5',
-    borderRadius: 24,
-    padding: 16,
+    borderRadius: 32,
+    padding: 20,
   },
   phoneGreeting: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '600',
     color: '#1a1a1a',
-    marginBottom: 8,
+    marginBottom: 12,
     fontFamily: 'Inter_600SemiBold',
   },
   phoneSearch: {
@@ -685,21 +685,22 @@ const styles = StyleSheet.create({
   },
   phoneCard: {
     backgroundColor: theme.colors.primary,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
   },
   phoneCardTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
     color: '#fff',
     fontFamily: 'Inter_700Bold',
   },
   phoneCardSubtitle: {
-    fontSize: 14,
+    fontSize: 16,
     color: 'rgba(255,255,255,0.8)',
-    marginBottom: 12,
+    marginBottom: 16,
     fontFamily: 'DMSans_400Regular',
+    lineHeight: 22,
   },
   phoneCardBtn: {
     backgroundColor: '#fff',
@@ -726,13 +727,13 @@ const styles = StyleSheet.create({
   phoneProgressBars: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 6,
-    height: 40,
+    gap: 8,
+    height: 50,
   },
   phoneProgressBar: {
-    width: 20,
+    width: 24,
     backgroundColor: '#4CAF50',
-    borderRadius: 4,
+    borderRadius: 6,
   },
 
   // Hero Right
