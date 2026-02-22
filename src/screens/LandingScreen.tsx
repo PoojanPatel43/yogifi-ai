@@ -204,6 +204,56 @@ const LandingScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </View>
 
+      {/* About Section - What is YogiFi */}
+      <View style={[styles.aboutSection, isDesktop && styles.aboutSectionDesktop]}>
+        <View style={styles.aboutContainer}>
+          <Animatable.View animation="fadeIn" duration={600}>
+            <Text style={styles.aboutLabel}>About Yogifi</Text>
+            <Text style={[styles.aboutTitle, isDesktop && styles.aboutTitleDesktop]}>
+              AI-Powered Yoga{'\n'}
+              <Text style={styles.aboutTitleBold}>For Everyone</Text>
+            </Text>
+            <Text style={[styles.aboutDesc, isDesktop && styles.aboutDescDesktop]}>
+              Yogifi is your personal AI yoga coach that uses real-time pose detection to guide
+              your practice. Our advanced computer vision technology analyzes your form, provides
+              instant feedback, and helps you master poses safely and effectively.
+            </Text>
+          </Animatable.View>
+
+          <View style={[styles.aboutFeatures, isDesktop && styles.aboutFeaturesDesktop]}>
+            <Animatable.View animation="fadeInUp" delay={100} duration={500} style={styles.aboutFeatureCard}>
+              <View style={[styles.aboutFeatureIcon, { backgroundColor: '#f0e6eb' }]}>
+                <Ionicons name="eye" size={24} color="#6d003f" />
+              </View>
+              <Text style={styles.aboutFeatureTitle}>Real-Time Detection</Text>
+              <Text style={styles.aboutFeatureDesc}>
+                AI-powered pose detection tracks your movements and provides instant alignment feedback
+              </Text>
+            </Animatable.View>
+
+            <Animatable.View animation="fadeInUp" delay={200} duration={500} style={styles.aboutFeatureCard}>
+              <View style={[styles.aboutFeatureIcon, { backgroundColor: '#e8f5ee' }]}>
+                <Ionicons name="chatbubbles" size={24} color="#4a8c6f" />
+              </View>
+              <Text style={styles.aboutFeatureTitle}>AI Wellness Coach</Text>
+              <Text style={styles.aboutFeatureDesc}>
+                Get personalized guidance on yoga, fitness, and nutrition from our AI assistant
+              </Text>
+            </Animatable.View>
+
+            <Animatable.View animation="fadeInUp" delay={300} duration={500} style={styles.aboutFeatureCard}>
+              <View style={[styles.aboutFeatureIcon, { backgroundColor: '#e6f0fa' }]}>
+                <Ionicons name="trending-up" size={24} color="#3b82f6" />
+              </View>
+              <Text style={styles.aboutFeatureTitle}>Track Progress</Text>
+              <Text style={styles.aboutFeatureDesc}>
+                Monitor your improvement with detailed session history, scores, and streak tracking
+              </Text>
+            </Animatable.View>
+          </View>
+        </View>
+      </View>
+
       {/* Customized Workouts Section */}
       <View style={[styles.workoutsSection, isDesktop && styles.workoutsSectionDesktop]}>
         <View style={[styles.workoutsContainer, isDesktop && styles.workoutsContainerDesktop]}>

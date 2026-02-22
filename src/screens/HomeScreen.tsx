@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -15,8 +16,7 @@ import { RootStackParamList, UserStats, Session } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { getUserStatsApi, getSessionHistoryApi, getProfileApi, updateProfileApi } from '../services/api';
 import { getItem, deleteItem } from '../utils/storage';
-import { theme } from '../constants/theme';
-import { ShimmerLoader, GradientButton } from '../components/ui';
+import { ShimmerLoader } from '../components/ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -127,10 +127,10 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           <View style={{ height: 12 }} />
           <ShimmerLoader width={280} height={44} borderRadius={8} />
         </View>
-        <View style={{ paddingHorizontal: theme.spacing.screen, gap: 24 }}>
-          <ShimmerLoader width="100%" height={80} borderRadius={theme.radius.lg} />
-          <ShimmerLoader width="100%" height={56} borderRadius={theme.radius.lg} />
-          <ShimmerLoader width="100%" height={56} borderRadius={theme.radius.lg} />
+        <View style={{ paddingHorizontal: 24, gap: 24 }}>
+          <ShimmerLoader width="100%" height={80} borderRadius={16} />
+          <ShimmerLoader width="100%" height={56} borderRadius={16} />
+          <ShimmerLoader width="100%" height={56} borderRadius={16} />
         </View>
       </View>
     );
@@ -148,20 +148,14 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         <RefreshControl
           refreshing={isRefreshing}
           onRefresh={() => fetchData(true)}
-          tintColor={theme.colors.primary}
+          tintColor="#6d003f"
         />
       }
     >
-      {/* Hero Greeting */}
-      <Animatable.View animation="fadeIn" duration={500} style={styles.heroSection}>
-        <View style={styles.heroTop}>
-          <View>
-            <Text style={styles.greeting}>{getGreeting()},</Text>
-            <Text style={styles.userName}>{user?.name || 'Yogi'}</Text>
-            {userGoal && (
-              <Text style={styles.goalSubtitle}>Focused on {userGoal}</Text>
-            )}
-          </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerInner}>
+          <Text style={styles.logo}>Yogifi</Text>
           <TouchableOpacity
             style={styles.profileButton}
             onPress={() => navigation.navigate('Profile')}
@@ -171,154 +165,176 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             </Text>
           </TouchableOpacity>
         </View>
+      </View>
+
+      {/* Hero Greeting */}
+      <Animatable.View animation="fadeIn" duration={500} style={styles.heroSection}>
+        <Text style={styles.greeting}>{getGreeting()}</Text>
+        <Text style={styles.userName}>{user?.name || 'Yogi'}</Text>
+        {userGoal && (
+          <View style={styles.goalBadge}>
+            <Text style={styles.goalText}>Focused on {userGoal}</Text>
+          </View>
+        )}
       </Animatable.View>
 
-      {/* Habit Dots */}
-      <Animatable.View animation="fadeIn" delay={100} duration={500} style={styles.habitSection}>
+      {/* Habit Tracking Card */}
+      <Animatable.View animation="fadeInUp" delay={100} duration={500} style={styles.habitCard}>
+        <Text style={styles.habitTitle}>Weekly Progress</Text>
         <View style={styles.habitRow}>
           {habitDots.map((active, i) => (
-            <View
-              key={i}
-              style={[styles.habitDot, active && styles.habitDotActive]}
-            />
+            <View key={i} style={styles.habitDayContainer}>
+              <View style={[styles.habitDot, active && styles.habitDotActive]} />
+              <Text style={styles.habitDayLabel}>
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'][(new Date().getDay() - 6 + i + 7) % 7]}
+              </Text>
+            </View>
           ))}
         </View>
         <Text style={styles.habitLabel}>
           {weekly.count > 0
-            ? `${weekly.count} session${weekly.count !== 1 ? 's' : ''} this week`
-            : 'No sessions this week yet'}
+            ? `${weekly.count} session${weekly.count !== 1 ? 's' : ''} this week · ${weekly.minutes} min`
+            : 'Start your first session this week'}
         </Text>
       </Animatable.View>
 
-      {/* Weekly Stats */}
+      {/* Stats Grid */}
       {(stats?.totalSessions ?? 0) > 0 && (
-        <Animatable.View animation="fadeIn" delay={150} duration={500} style={styles.statsSection}>
+        <Animatable.View animation="fadeInUp" delay={150} duration={500} style={styles.statsSection}>
           <TouchableOpacity
-            style={styles.statsRow}
+            style={styles.statsCard}
             onPress={() => navigation.navigate('Progress')}
             activeOpacity={0.7}
           >
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{stats?.totalSessions ?? 0}</Text>
-              <Text style={styles.statLabel}>Sessions</Text>
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>{stats?.totalSessions ?? 0}</Text>
+                <Text style={styles.statLabel}>Sessions</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>{stats?.totalMinutes ?? 0}</Text>
+                <Text style={styles.statLabel}>Minutes</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>
+                  {stats?.averageScore ? Math.round(stats.averageScore) : '--'}
+                </Text>
+                <Text style={styles.statLabel}>Avg Score</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>{stats?.currentStreak ?? 0}</Text>
+                <Text style={styles.statLabel}>Streak</Text>
+              </View>
             </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{stats?.totalMinutes ?? 0}</Text>
-              <Text style={styles.statLabel}>Minutes</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>
-                {stats?.averageScore ? Math.round(stats.averageScore) : '--'}
-              </Text>
-              <Text style={styles.statLabel}>Avg Score</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{stats?.currentStreak ?? 0}</Text>
-              <Text style={styles.statLabel}>Streak</Text>
+            <View style={styles.statsHint}>
+              <Text style={styles.statsHintText}>Tap to view progress</Text>
+              <Ionicons name="arrow-forward" size={14} color="#999" />
             </View>
           </TouchableOpacity>
         </Animatable.View>
       )}
 
       {/* Primary CTA */}
-      <Animatable.View animation="fadeIn" delay={200} duration={500} style={styles.ctaSection}>
-        <GradientButton
-          title="Begin Practice"
-          onPress={() => navigation.navigate('PoseSelection')}
-          variant="dark"
-          size="lg"
+      <Animatable.View animation="fadeInUp" delay={200} duration={500} style={styles.ctaSection}>
+        <TouchableOpacity
           style={styles.ctaButton}
-        />
+          onPress={() => navigation.navigate('PoseSelection')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.ctaButtonText}>Begin Practice</Text>
+        </TouchableOpacity>
         <Text style={styles.ctaHint}>AI-guided yoga with real-time feedback</Text>
       </Animatable.View>
 
-      {/* Feature Links */}
-      <Animatable.View animation="fadeIn" delay={300} duration={500} style={styles.linksSection}>
-        <TouchableOpacity
-          style={styles.linkRow}
-          onPress={() => navigation.navigate('AIChat')}
-          activeOpacity={0.6}
-        >
-          <View style={styles.linkLeft}>
-            <Text style={styles.linkTitle}>AI Wellness Coach</Text>
-            <Text style={styles.linkDesc}>Ask about yoga, fitness, or nutrition</Text>
-          </View>
-          <Ionicons name="arrow-forward" size={18} color={theme.colors.textTertiary} />
-        </TouchableOpacity>
+      {/* Feature Cards */}
+      <Animatable.View animation="fadeInUp" delay={300} duration={500} style={styles.featuresSection}>
+        <Text style={styles.sectionTitle}>Explore</Text>
 
-        <View style={styles.linkSeparator} />
+        <View style={styles.featureGrid}>
+          <TouchableOpacity
+            style={styles.featureCard}
+            onPress={() => navigation.navigate('AIChat')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.featureIcon, { backgroundColor: '#f0e6eb' }]}>
+              <Ionicons name="chatbubble-ellipses" size={24} color="#6d003f" />
+            </View>
+            <Text style={styles.featureTitle}>AI Coach</Text>
+            <Text style={styles.featureDesc}>Ask about yoga & wellness</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.linkRow}
-          onPress={() => navigation.navigate('FitnessPlanner')}
-          activeOpacity={0.6}
-        >
-          <View style={styles.linkLeft}>
-            <Text style={styles.linkTitle}>Fitness Plans</Text>
-            <Text style={styles.linkDesc}>AI-generated workout routines</Text>
-          </View>
-          <Ionicons name="arrow-forward" size={18} color={theme.colors.textTertiary} />
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.featureCard}
+            onPress={() => navigation.navigate('FitnessPlanner')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.featureIcon, { backgroundColor: '#e8f5ee' }]}>
+              <Ionicons name="fitness" size={24} color="#4a8c6f" />
+            </View>
+            <Text style={styles.featureTitle}>Fitness Plans</Text>
+            <Text style={styles.featureDesc}>AI workout routines</Text>
+          </TouchableOpacity>
 
-        <View style={styles.linkSeparator} />
+          <TouchableOpacity
+            style={styles.featureCard}
+            onPress={() => navigation.navigate('DietPlanner')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.featureIcon, { backgroundColor: '#fef3e6' }]}>
+              <Ionicons name="nutrition" size={24} color="#b8860b" />
+            </View>
+            <Text style={styles.featureTitle}>Diet Plans</Text>
+            <Text style={styles.featureDesc}>Personalized meals</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.linkRow}
-          onPress={() => navigation.navigate('DietPlanner')}
-          activeOpacity={0.6}
-        >
-          <View style={styles.linkLeft}>
-            <Text style={styles.linkTitle}>Diet Plans</Text>
-            <Text style={styles.linkDesc}>Personalized meal planning</Text>
-          </View>
-          <Ionicons name="arrow-forward" size={18} color={theme.colors.textTertiary} />
-        </TouchableOpacity>
-
-        <View style={styles.linkSeparator} />
-
-        <TouchableOpacity
-          style={styles.linkRow}
-          onPress={() => navigation.navigate('Progress')}
-          activeOpacity={0.6}
-        >
-          <View style={styles.linkLeft}>
-            <Text style={styles.linkTitle}>Progress</Text>
-            <Text style={styles.linkDesc}>Charts, streaks, and score trends</Text>
-          </View>
-          <Ionicons name="arrow-forward" size={18} color={theme.colors.textTertiary} />
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.featureCard}
+            onPress={() => navigation.navigate('Progress')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.featureIcon, { backgroundColor: '#e6f0fa' }]}>
+              <Ionicons name="stats-chart" size={24} color="#3b82f6" />
+            </View>
+            <Text style={styles.featureTitle}>Progress</Text>
+            <Text style={styles.featureDesc}>Charts & trends</Text>
+          </TouchableOpacity>
+        </View>
       </Animatable.View>
 
       {/* Recent Sessions */}
       {recentSessions.length > 0 && (
-        <Animatable.View animation="fadeIn" delay={400} duration={500} style={styles.sessionsSection}>
+        <Animatable.View animation="fadeInUp" delay={400} duration={500} style={styles.sessionsSection}>
           <View style={styles.sessionsHeader}>
-            <Text style={styles.sessionsTitle}>Recent</Text>
+            <Text style={styles.sectionTitle}>Recent Sessions</Text>
             <TouchableOpacity onPress={() => navigation.navigate('History')}>
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
 
-          {recentSessions.slice(0, 3).map((session) => (
+          {recentSessions.slice(0, 3).map((session, index) => (
             <TouchableOpacity
               key={session.id}
-              style={styles.sessionRow}
+              style={[
+                styles.sessionCard,
+                index === recentSessions.slice(0, 3).length - 1 && styles.sessionCardLast,
+              ]}
               onPress={() => navigation.navigate('SessionDetails', { sessionId: session.id })}
-              activeOpacity={0.6}
+              activeOpacity={0.7}
             >
-              <View style={styles.sessionInfo}>
+              <View style={styles.sessionLeft}>
                 <Text style={styles.sessionPose}>{session.poseName || 'Yoga Session'}</Text>
                 <Text style={styles.sessionMeta}>
                   {session.createdAt ? new Date(session.createdAt).toLocaleDateString() : ''}
-                  {session.durationSeconds ? ` \u00B7 ${Math.round(session.durationSeconds / 60)}min` : ''}
+                  {session.durationSeconds ? ` · ${Math.round(session.durationSeconds / 60)}min` : ''}
                 </Text>
               </View>
-              <Text style={styles.sessionScore}>
-                {session.overallScore ?? '--'}
-              </Text>
+              <View style={styles.sessionRight}>
+                <Text style={styles.sessionScore}>{session.overallScore ?? '--'}</Text>
+                <Text style={styles.sessionScoreLabel}>score</Text>
+              </View>
             </TouchableOpacity>
           ))}
         </Animatable.View>
@@ -326,12 +342,17 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
       {/* Empty State */}
       {recentSessions.length === 0 && (
-        <Animatable.View animation="fadeIn" delay={400} duration={500} style={styles.emptySection}>
+        <Animatable.View animation="fadeIn" delay={400} duration={500} style={styles.emptyCard}>
+          <Ionicons name="leaf-outline" size={48} color="#ccc" />
+          <Text style={styles.emptyTitle}>Ready to begin?</Text>
           <Text style={styles.emptyText}>
-            Start your first session to track your progress
+            Start your first session to track your progress and unlock personalized insights.
           </Text>
         </Animatable.View>
       )}
+
+      {/* Bottom spacing */}
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 };
@@ -339,221 +360,393 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#fafafa',
   },
   scrollContent: {
-    paddingBottom: 60,
+    paddingBottom: 20,
   },
   loadingHeader: {
-    paddingHorizontal: theme.spacing.screen,
-    paddingTop: 80,
+    paddingHorizontal: 24,
+    paddingTop: 100,
     paddingBottom: 40,
   },
 
-  // Hero
-  heroSection: {
-    paddingHorizontal: theme.spacing.screen,
-    paddingTop: 80,
-    paddingBottom: theme.spacing.lg,
+  // Header
+  header: {
+    backgroundColor: '#fafafa',
+    paddingTop: Platform.OS === 'web' ? 16 : 60,
   },
-  heroTop: {
+  headerInner: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
   },
-  greeting: {
-    ...theme.typography.bodySm,
-    color: theme.colors.textTertiary,
-    marginBottom: 4,
-  },
-  userName: {
-    ...theme.typography.h1,
-    color: theme.colors.text,
-  },
-  goalSubtitle: {
-    ...theme.typography.bodySm,
-    color: theme.colors.textTertiary,
-    marginTop: 4,
+  logo: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    fontFamily: 'Inter_600SemiBold',
   },
   profileButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: theme.colors.primary,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#1a1a1a',
     justifyContent: 'center',
     alignItems: 'center',
   },
   profileInitial: {
-    ...theme.typography.h4,
-    color: theme.colors.textInverse,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+    fontFamily: 'Inter_600SemiBold',
   },
 
-  // Habit Dots
-  habitSection: {
-    paddingHorizontal: theme.spacing.screen,
-    paddingBottom: theme.spacing.lg,
+  // Hero
+  heroSection: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 32,
+  },
+  greeting: {
+    fontSize: 16,
+    color: '#999',
+    marginBottom: 4,
+    fontFamily: 'DMSans_400Regular',
+  },
+  userName: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: -0.5,
+  },
+  goalBadge: {
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 100,
+    alignSelf: 'flex-start',
+    marginTop: 12,
+  },
+  goalText: {
+    fontSize: 12,
+    color: '#666',
+    fontFamily: 'Inter_500Medium',
+  },
+
+  // Habit Card
+  habitCard: {
+    marginHorizontal: 24,
+    marginBottom: 24,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 10,
+        elevation: 4,
+      },
+    }),
+  },
+  habitTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 16,
+    fontFamily: 'Inter_600SemiBold',
   },
   habitRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 8,
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  habitDayContainer: {
+    alignItems: 'center',
+    gap: 6,
   },
   habitDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: theme.colors.borderLight,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f0f0f0',
   },
   habitDotActive: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: '#6d003f',
+  },
+  habitDayLabel: {
+    fontSize: 11,
+    color: '#999',
+    fontFamily: 'Inter_500Medium',
   },
   habitLabel: {
-    ...theme.typography.caption,
-    color: theme.colors.textTertiary,
-    textTransform: 'none',
-    letterSpacing: 0,
     fontSize: 13,
+    color: '#666',
+    fontFamily: 'DMSans_400Regular',
   },
 
   // Stats
   statsSection: {
-    paddingHorizontal: theme.spacing.screen,
-    paddingBottom: theme.spacing.xl,
+    paddingHorizontal: 24,
+    marginBottom: 24,
+  },
+  statsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 10,
+        elevation: 4,
+      },
+    }),
   },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.lg,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.borderLight,
   },
   statItem: {
     flex: 1,
     alignItems: 'center',
   },
   statNumber: {
-    ...theme.typography.h3,
-    color: theme.colors.text,
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    fontFamily: 'Inter_700Bold',
   },
   statLabel: {
-    ...theme.typography.caption,
-    color: theme.colors.textTertiary,
-    marginTop: 2,
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
+    fontFamily: 'Inter_500Medium',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   statDivider: {
     width: 1,
-    height: 32,
-    backgroundColor: theme.colors.borderLight,
+    height: 40,
+    backgroundColor: '#f0f0f0',
+  },
+  statsHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    gap: 4,
+  },
+  statsHintText: {
+    fontSize: 12,
+    color: '#999',
+    fontFamily: 'DMSans_400Regular',
   },
 
   // CTA
   ctaSection: {
-    paddingHorizontal: theme.spacing.screen,
-    paddingBottom: theme.spacing.xl,
+    paddingHorizontal: 24,
+    marginBottom: 32,
   },
   ctaButton: {
-    width: '100%',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 100,
+    paddingVertical: 18,
+    alignItems: 'center',
+  },
+  ctaButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    fontFamily: 'Inter_600SemiBold',
   },
   ctaHint: {
-    ...theme.typography.bodySm,
-    color: theme.colors.textTertiary,
+    fontSize: 13,
+    color: '#999',
     textAlign: 'center',
     marginTop: 12,
+    fontFamily: 'DMSans_400Regular',
   },
 
-  // Feature Links
-  linksSection: {
-    marginHorizontal: theme.spacing.screen,
-    marginBottom: theme.spacing.xl,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.borderLight,
-    overflow: 'hidden',
+  // Features
+  featuresSection: {
+    paddingHorizontal: 24,
+    marginBottom: 32,
   },
-  linkRow: {
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#999',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 16,
+    fontFamily: 'Inter_500Medium',
+  },
+  featureGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  featureCard: {
+    width: '48%',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        elevation: 2,
+      },
+    }),
+  },
+  featureIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.md,
-    backgroundColor: theme.colors.background,
+    justifyContent: 'center',
+    marginBottom: 12,
   },
-  linkLeft: {
-    flex: 1,
+  featureTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 4,
+    fontFamily: 'Inter_600SemiBold',
   },
-  linkTitle: {
-    ...theme.typography.bodyMedium,
-    color: theme.colors.text,
-    marginBottom: 2,
-  },
-  linkDesc: {
-    ...theme.typography.bodySm,
-    color: theme.colors.textTertiary,
-  },
-  linkSeparator: {
-    height: 1,
-    backgroundColor: theme.colors.borderLight,
-    marginLeft: theme.spacing.md,
+  featureDesc: {
+    fontSize: 12,
+    color: '#999',
+    fontFamily: 'DMSans_400Regular',
   },
 
   // Sessions
   sessionsSection: {
-    paddingHorizontal: theme.spacing.screen,
-    paddingBottom: theme.spacing.lg,
+    paddingHorizontal: 24,
+    marginBottom: 24,
   },
   sessionsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
-  },
-  sessionsTitle: {
-    ...theme.typography.caption,
-    color: theme.colors.textTertiary,
+    marginBottom: 16,
   },
   viewAllText: {
-    ...theme.typography.bodySm,
-    color: theme.colors.primary,
+    fontSize: 14,
+    color: '#6d003f',
+    fontFamily: 'Inter_500Medium',
   },
-  sessionRow: {
+  sessionCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        elevation: 2,
+      },
+    }),
   },
-  sessionInfo: {
+  sessionCardLast: {
+    marginBottom: 0,
+  },
+  sessionLeft: {
     flex: 1,
   },
   sessionPose: {
-    ...theme.typography.bodyMedium,
-    color: theme.colors.text,
-    marginBottom: 2,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 4,
+    fontFamily: 'Inter_600SemiBold',
   },
   sessionMeta: {
-    ...theme.typography.bodySm,
-    color: theme.colors.textTertiary,
+    fontSize: 13,
+    color: '#999',
+    fontFamily: 'DMSans_400Regular',
+  },
+  sessionRight: {
+    alignItems: 'center',
+    paddingLeft: 16,
   },
   sessionScore: {
-    ...theme.typography.h3,
-    color: theme.colors.text,
-    marginLeft: theme.spacing.sm,
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    fontFamily: 'Inter_700Bold',
+  },
+  sessionScoreLabel: {
+    fontSize: 10,
+    color: '#999',
+    textTransform: 'uppercase',
+    fontFamily: 'Inter_500Medium',
   },
 
   // Empty
-  emptySection: {
-    paddingHorizontal: theme.spacing.screen,
-    paddingVertical: theme.spacing.xl,
+  emptyCard: {
+    marginHorizontal: 24,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 32,
     alignItems: 'center',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 10,
+        elevation: 4,
+      },
+    }),
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginTop: 16,
+    marginBottom: 8,
+    fontFamily: 'Inter_600SemiBold',
   },
   emptyText: {
-    ...theme.typography.body,
-    color: theme.colors.textTertiary,
+    fontSize: 14,
+    color: '#999',
     textAlign: 'center',
+    lineHeight: 22,
+    fontFamily: 'DMSans_400Regular',
   },
 });
 
