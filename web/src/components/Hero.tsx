@@ -1,9 +1,15 @@
-import { useRef } from 'react';
+import { useRef, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 
 const Hero = () => {
   const container = useRef<HTMLDivElement>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    setIsLoggedIn(!!localStorage.getItem('token'));
+  }, []);
 
   useGSAP(() => {
     // Entrance animation
@@ -66,9 +72,15 @@ const Hero = () => {
           </p>
           
           <div className="hero-elem flex flex-col sm:flex-row items-center gap-6 lg:gap-8 w-full sm:w-auto">
-            <button className="magnetic-btn btn-clay bg-clay text-cream px-8 py-4 rounded-full font-sans font-bold text-base md:text-lg w-full sm:w-auto">
-              <span>Join the Waitlist &rarr;</span>
-            </button>
+            {isLoggedIn ? (
+              <Link to="/dashboard" className="magnetic-btn btn-clay bg-clay text-cream px-8 py-4 rounded-full font-sans font-bold text-base md:text-lg w-full sm:w-auto inline-flex items-center justify-center transition-colors">
+                <span>Open Dashboard &rarr;</span>
+              </Link>
+            ) : (
+              <a href="#pricing" className="magnetic-btn btn-clay bg-clay text-cream px-8 py-4 rounded-full font-sans font-bold text-base md:text-lg w-full sm:w-auto inline-flex items-center justify-center transition-colors">
+                <span>Join the Waitlist &rarr;</span>
+              </a>
+            )}
             <a href="#features" className="link-lift link-lift-color text-cream font-sans font-semibold border-b border-cream/30 pb-1 text-sm md:text-base whitespace-nowrap">
               Explore features &darr;
             </a>
