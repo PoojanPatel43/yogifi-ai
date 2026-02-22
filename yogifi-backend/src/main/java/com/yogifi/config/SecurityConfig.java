@@ -1,6 +1,7 @@
 package com.yogifi.config;
 
 import com.yogifi.security.JwtAuthenticationFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -38,7 +39,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Public endpoints
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/poses/list").permitAll()
+                .requestMatchers("/api/poses/**").permitAll()  // all pose endpoints are public
                 .requestMatchers("/api/health").permitAll()
                 .requestMatchers("/api/test-cors").permitAll()
                 .requestMatchers("/h2-console/**").permitAll()
@@ -47,6 +48,17 @@ public class SecurityConfig {
             )
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+            // Return 401 (not 403) when request has no/invalid auth token
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write(
+                        "{\"success\":false,\"error\":\"Unauthorized - valid authentication token required\",\"timestamp\":\"" +
+                        java.time.Instant.now() + "\"}"
+                    );
+                })
             )
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

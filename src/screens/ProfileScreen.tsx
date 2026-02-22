@@ -73,10 +73,8 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             await logout();
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Login' }],
-            });
+            // Navigation will automatically switch to Landing screen
+            // when isAuthenticated becomes false in AppNavigator
           },
         },
       ]

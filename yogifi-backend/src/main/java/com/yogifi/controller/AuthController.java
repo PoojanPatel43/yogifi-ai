@@ -1,6 +1,8 @@
 package com.yogifi.controller;
 
 import com.yogifi.dto.*;
+import com.yogifi.exception.InvalidCredentialsException;
+import com.yogifi.exception.UserAlreadyExistsException;
 import com.yogifi.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -49,8 +51,13 @@ public class AuthController {
             return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "User registered successfully"));
+        } catch (UserAlreadyExistsException e) {
+            log.warn("Registration failed - user already exists: {}", email);
+            return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error("An account with this email already exists"));
         } catch (DataIntegrityViolationException e) {
-            log.warn("Registration failed - duplicate email: {}", email);
+            log.warn("Registration failed - duplicate email (DB constraint): {}", email);
             return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(ApiResponse.error("An account with this email already exists"));
@@ -80,7 +87,7 @@ public class AuthController {
             AuthResponse response = authService.login(request);
             log.info("Login successful for email: {}", email);
             return ResponseEntity.ok(ApiResponse.success(response, "Login successful"));
-        } catch (BadCredentialsException e) {
+        } catch (InvalidCredentialsException | BadCredentialsException e) {
             log.warn("Login failed - invalid credentials for email: {}", email);
             return ResponseEntity
                 .status(HttpStatus.UNAUTHORIZED)

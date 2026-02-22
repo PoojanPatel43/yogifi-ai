@@ -127,7 +127,9 @@ public class SessionService {
             .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public SessionResponse getSessionById(UUID sessionId) {
+        // Two separate queries avoids MultipleBagFetchException (Hibernate bag limitation)
         Session session = sessionRepository.findByIdWithDetails(sessionId)
             .orElseThrow(() -> new SessionNotFoundException("Session not found with id: " + sessionId));
 
@@ -136,6 +138,13 @@ public class SessionService {
         if (!session.getUser().getId().equals(currentUser.getId())) {
             throw new SessionNotFoundException("Session not found");
         }
+
+        // Merge mistakes via separate query
+        sessionRepository.findByIdWithMistakes(sessionId).ifPresent(s -> {
+            if (session.getMistakes().isEmpty() && !s.getMistakes().isEmpty()) {
+                session.getMistakes().addAll(s.getMistakes());
+            }
+        });
 
         return SessionResponse.fromEntity(session, true);
     }

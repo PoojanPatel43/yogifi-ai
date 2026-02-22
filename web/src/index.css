@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,300;1,400&family=IBM+Plex+Mono:wght@400;500&family=Outfit:wght@300;400;700&family=Plus+Jakarta+Sans:wght@400;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-cream text-charcoal antialiased overflow-x-hidden relative min-h-screen selection:bg-clay selection:text-cream;
+  }
+  
+  /* Noise overlay */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.05;
+    background: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E');
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-cream;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-charcoal/20 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-charcoal/40;
+  }
+}
+
+@layer components {
+  /* Radius system */
+  .rounded-system {
+    border-radius: clamp(2rem, 3vw, 3rem);
+  }
+
+  /* Magnetic Button */
+  .magnetic-btn {
+    @apply relative overflow-hidden inline-flex items-center justify-center transition-transform duration-300;
+    transition-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  .magnetic-btn:hover {
+    transform: scale(1.03);
+  }
+  .magnetic-btn::after {
+    content: "";
+    @apply absolute inset-0 bg-charcoal translate-y-full transition-transform duration-300;
+    transition-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    z-index: 0;
+  }
+  .magnetic-btn.btn-clay::after {
+    @apply bg-[#b34b29]; /* Darker clay for hover */
+  }
+  .magnetic-btn:hover::after {
+    @apply translate-y-0;
+  }
+  .magnetic-btn > * {
+    @apply relative z-10;
+  }
+
+  /* Link Lift */
+  .link-lift {
+    @apply transition-transform duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)];
+    display: inline-block;
+  }
+  .link-lift:hover {
+    transform: translateY(-1px);
+  }
+  .link-lift-color {
+    @apply transition-colors duration-300 ease-out;
+  }
+  .link-lift-color:hover {
+    @apply text-clay;
+  }
+}
