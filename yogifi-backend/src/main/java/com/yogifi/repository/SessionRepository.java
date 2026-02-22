@@ -22,8 +22,13 @@ public interface SessionRepository extends JpaRepository<Session, UUID> {
     @Query("SELECT s FROM Session s LEFT JOIN FETCH s.pose WHERE s.id = :id")
     Optional<Session> findByIdWithPose(UUID id);
 
-    @Query("SELECT s FROM Session s LEFT JOIN FETCH s.pose LEFT JOIN FETCH s.metrics LEFT JOIN FETCH s.mistakes WHERE s.id = :id")
+    // Fetch pose + metrics (one collection — avoids MultipleBagFetchException)
+    @Query("SELECT s FROM Session s LEFT JOIN FETCH s.pose LEFT JOIN FETCH s.metrics WHERE s.id = :id")
     Optional<Session> findByIdWithDetails(UUID id);
+
+    // Separate query to fetch mistakes for the same session
+    @Query("SELECT s FROM Session s LEFT JOIN FETCH s.mistakes WHERE s.id = :id")
+    Optional<Session> findByIdWithMistakes(UUID id);
 
     @Query("SELECT COUNT(s) FROM Session s WHERE s.user.id = :userId AND s.status = 'COMPLETED'")
     Long countCompletedSessionsByUserId(UUID userId);
