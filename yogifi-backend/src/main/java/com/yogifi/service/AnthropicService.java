@@ -37,14 +37,19 @@ public class AnthropicService {
 
         if (apiKey == null || apiKey.isBlank()) {
             log.warn("AI_API_KEY is not set. AI features will not work until a valid API key is configured.");
+            apiKey = ""; // Prevent null pointer
+        }
+
+        if ("gemini".equalsIgnoreCase(provider) && !apiUrl.contains("?key=") && !apiKey.isBlank()) {
+            apiUrl = apiUrl + "?key=" + apiKey;
         }
 
         WebClient.Builder builder = WebClient.builder().baseUrl(apiUrl);
 
         if ("anthropic".equalsIgnoreCase(provider)) {
-            builder.defaultHeader("x-api-key", apiKey != null ? apiKey : "")
-                   .defaultHeader("anthropic-version", "2023-06-01")
-                   .defaultHeader("Content-Type", "application/json");
+            builder.defaultHeader("x-api-key", apiKey)
+                    .defaultHeader("anthropic-version", "2023-06-01")
+                    .defaultHeader("Content-Type", "application/json");
         } else if ("gemini".equalsIgnoreCase(provider)) {
             // Gemini uses API key in URL query parameter
             builder.defaultHeader("Content-Type", "application/json");
@@ -56,7 +61,8 @@ public class AnthropicService {
     public String chat(String systemPrompt, List<Map<String, String>> messages) {
         try {
             if (webClient == null) {
-                throw new IllegalStateException("AI service is not configured. Please set the AI_API_KEY environment variable.");
+                throw new IllegalStateException(
+                        "AI service is not configured. Please set the AI_API_KEY environment variable.");
             }
 
             if ("gemini".equalsIgnoreCase(provider)) {
@@ -73,7 +79,8 @@ public class AnthropicService {
             String responseBody = e.getResponseBodyAsString();
 
             if (msg.contains("401") || msg.contains("Unauthorized") || msg.contains("invalid")) {
-                throw new IllegalStateException("AI service API key is invalid or missing. Please check the AI_API_KEY configuration.");
+                throw new IllegalStateException(
+                        "AI service API key is invalid or missing. Please check the AI_API_KEY configuration.");
             }
             if (msg.contains("400") || msg.contains("Bad Request")) {
                 throw new RuntimeException("AI service request error: " + responseBody);
@@ -83,7 +90,8 @@ public class AnthropicService {
             log.error("Error calling AI API: {}", e.getMessage(), e);
             String msg = e.getMessage() != null ? e.getMessage() : "Unknown error";
             if (msg.contains("401") || msg.contains("Unauthorized") || msg.contains("invalid")) {
-                throw new IllegalStateException("AI service API key is invalid or missing. Please check the AI_API_KEY configuration.");
+                throw new IllegalStateException(
+                        "AI service API key is invalid or missing. Please check the AI_API_KEY configuration.");
             }
             throw new RuntimeException("AI service is temporarily unavailable. Please try again in a moment.");
         }
@@ -130,11 +138,11 @@ public class AnthropicService {
         log.debug("Sending request to Gemini API: {}", requestBody.toPrettyString());
 
         String responseBody = webClient.post()
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestBody)
-            .retrieve()
-            .bodyToMono(String.class)
-            .block();
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
 
         JsonNode response = objectMapper.readTree(responseBody);
         JsonNode candidates = response.get("candidates");
@@ -171,11 +179,11 @@ public class AnthropicService {
         log.debug("Sending request to Anthropic API: {}", requestBody.toPrettyString());
 
         String responseBody = webClient.post()
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(requestBody)
-            .retrieve()
-            .bodyToMono(String.class)
-            .block();
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
 
         JsonNode response = objectMapper.readTree(responseBody);
         JsonNode content = response.get("content");
