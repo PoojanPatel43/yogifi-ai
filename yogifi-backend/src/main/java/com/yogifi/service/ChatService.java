@@ -71,8 +71,16 @@ public class ChatService {
             ));
         }
 
-        // Call AI
-        String aiResponse = anthropicService.chat(SYSTEM_PROMPT, messages);
+        // Call AI — fall back to offline message if quota exceeded or AI unavailable
+        String aiResponse;
+        try {
+            aiResponse = anthropicService.chat(SYSTEM_PROMPT, messages);
+        } catch (Exception e) {
+            log.warn("AI unavailable for chat, using offline fallback: {}", e.getMessage());
+            aiResponse = "I'm temporarily offline due to high demand. " +
+                "Tip: In yoga, breath leads movement — every inhale creates space, every exhale deepens the pose. " +
+                "Please try again in a moment!";
+        }
 
         // Save assistant message
         ChatMessage assistantMessage = ChatMessage.builder()

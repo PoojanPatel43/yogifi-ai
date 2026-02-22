@@ -97,7 +97,7 @@ const TelemetryTypewriter = () => {
 
     startTyping();
     return () => clearInterval(typingInterval);
-  }, [messageIndex]); // remove dependencies tracking to avoid duplicate intervals if message changes from outside, wait, messageIndex is fine.
+  }, [messageIndex, messages]); // added messages to dependency array
 
   return (
     <div className="w-full h-full bg-[#111] rounded-2xl border border-cream/10 overflow-hidden flex flex-col mt-4">

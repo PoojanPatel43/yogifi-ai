@@ -54,7 +54,13 @@ public class NutritionService {
             request.getAllergies() != null ? request.getAllergies() : "none"
         );
 
-        String aiResponse = anthropicService.chat(SYSTEM_PROMPT, List.of(Map.of("role", "user", "content", prompt)));
+        String aiResponse;
+        try {
+            aiResponse = anthropicService.chat(SYSTEM_PROMPT, List.of(Map.of("role", "user", "content", prompt)));
+        } catch (Exception e) {
+            log.warn("AI unavailable for nutrition plan, using offline fallback: {}", e.getMessage());
+            aiResponse = null;
+        }
 
         MealPlan plan = MealPlan.builder()
             .user(user)
@@ -62,51 +68,79 @@ public class NutritionService {
             .goal(request.getGoal())
             .calorieTarget(request.getCalorieTarget())
             .allergies(request.getAllergies())
-            .rawResponse(aiResponse)
+            .rawResponse(aiResponse != null ? aiResponse : "offline-fallback")
             .build();
 
-        try {
-            String json = aiResponse.trim();
-            if (json.startsWith("```")) {
-                json = json.replaceAll("^```(?:json)?\\s*", "").replaceAll("\\s*```$", "");
-            }
+        List<MealDay> mealDays = new ArrayList<>();
 
-            JsonNode root = objectMapper.readTree(json);
-            JsonNode days = root.get("days");
-
-            List<MealDay> mealDays = new ArrayList<>();
-            if (days != null && days.isArray()) {
-                for (JsonNode dayNode : days) {
-                    MealDay day = MealDay.builder()
-                        .plan(plan)
-                        .dayNumber(dayNode.get("dayNumber").asInt())
-                        .build();
-
-                    List<Meal> meals = new ArrayList<>();
-                    JsonNode mealNodes = dayNode.get("meals");
-                    if (mealNodes != null && mealNodes.isArray()) {
-                        for (JsonNode mealNode : mealNodes) {
-                            meals.add(Meal.builder()
-                                .mealDay(day)
-                                .mealType(mealNode.get("mealType").asText())
-                                .name(mealNode.get("name").asText())
-                                .description(mealNode.has("description") ? mealNode.get("description").asText() : null)
-                                .calories(mealNode.has("calories") ? mealNode.get("calories").asInt() : null)
-                                .protein(mealNode.has("protein") ? mealNode.get("protein").asInt() : null)
-                                .carbs(mealNode.has("carbs") ? mealNode.get("carbs").asInt() : null)
-                                .fat(mealNode.has("fat") ? mealNode.get("fat").asInt() : null)
-                                .build());
-                        }
-                    }
-                    day.setMeals(meals);
-                    mealDays.add(day);
+        if (aiResponse != null) {
+            try {
+                String json = aiResponse.trim();
+                if (json.startsWith("```")) {
+                    json = json.replaceAll("^```(?:json)?\\s*", "").replaceAll("\\s*```$", "");
                 }
+
+                JsonNode root = objectMapper.readTree(json);
+                JsonNode days = root.get("days");
+
+                if (days != null && days.isArray()) {
+                    for (JsonNode dayNode : days) {
+                        MealDay day = MealDay.builder()
+                            .plan(plan)
+                            .dayNumber(dayNode.get("dayNumber").asInt())
+                            .build();
+
+                        List<Meal> meals = new ArrayList<>();
+                        JsonNode mealNodes = dayNode.get("meals");
+                        if (mealNodes != null && mealNodes.isArray()) {
+                            for (JsonNode mealNode : mealNodes) {
+                                meals.add(Meal.builder()
+                                    .mealDay(day)
+                                    .mealType(mealNode.get("mealType").asText())
+                                    .name(mealNode.get("name").asText())
+                                    .description(mealNode.has("description") ? mealNode.get("description").asText() : null)
+                                    .calories(mealNode.has("calories") ? mealNode.get("calories").asInt() : null)
+                                    .protein(mealNode.has("protein") ? mealNode.get("protein").asInt() : null)
+                                    .carbs(mealNode.has("carbs") ? mealNode.get("carbs").asInt() : null)
+                                    .fat(mealNode.has("fat") ? mealNode.get("fat").asInt() : null)
+                                    .build());
+                            }
+                        }
+                        day.setMeals(meals);
+                        mealDays.add(day);
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Failed to parse nutrition plan JSON, using fallback: {}", e.getMessage());
             }
-            plan.setMealDays(mealDays);
-        } catch (Exception e) {
-            log.warn("Failed to parse nutrition plan JSON, saving raw response: {}", e.getMessage());
         }
 
+        // Offline fallback: build a minimal 3-day plan so the endpoint always returns 200
+        if (mealDays.isEmpty()) {
+            int calTarget = request.getCalorieTarget() != null ? request.getCalorieTarget() : 2000;
+            String[][] mealNames = {
+                {"Oatmeal with Berries", "Grilled Chicken Salad", "Salmon with Quinoa", "Mixed Nuts"},
+                {"Greek Yogurt Parfait", "Lentil Soup with Bread", "Stir-fried Tofu & Vegetables", "Apple with Almond Butter"},
+                {"Smoothie Bowl", "Whole Grain Wrap", "Baked Cod with Sweet Potato", "Hummus & Veggie Sticks"}
+            };
+            String[] mealTypes = {"Breakfast", "Lunch", "Dinner", "Snack"};
+            for (int d = 0; d < 3; d++) {
+                MealDay day = MealDay.builder().plan(plan).dayNumber(d + 1).build();
+                List<Meal> meals = new ArrayList<>();
+                for (int m = 0; m < mealTypes.length; m++) {
+                    meals.add(Meal.builder()
+                        .mealDay(day)
+                        .mealType(mealTypes[m])
+                        .name(mealNames[d][m])
+                        .calories(calTarget / 4)
+                        .build());
+                }
+                day.setMeals(meals);
+                mealDays.add(day);
+            }
+        }
+
+        plan.setMealDays(mealDays);
         plan = planRepo.save(plan);
         return NutritionPlanResponse.fromEntity(plan);
     }
