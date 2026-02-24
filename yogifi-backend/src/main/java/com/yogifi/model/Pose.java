@@ -44,6 +44,10 @@ public class Pose {
 
     private String imageUrl;
 
+    /** Maps to the ML model's class label (e.g. "downdog", "warrior2"). Null = not ML-tracked. */
+    @Column(name = "ml_model_key")
+    private String mlModelKey;
+
     @Column(name = "rules_version")
     @Builder.Default
     private Integer rulesVersion = 1;
