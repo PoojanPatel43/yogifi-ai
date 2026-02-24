@@ -22,6 +22,7 @@ public class PoseResponse {
     private String precautions;
     private String imageUrl;
     private Integer targetDurationSeconds;
+    private String mlModelKey;
 
     public static PoseResponse fromEntity(Pose pose) {
         return PoseResponse.builder()
@@ -35,6 +36,7 @@ public class PoseResponse {
             .precautions(pose.getPrecautions())
             .imageUrl(pose.getImageUrl())
             .targetDurationSeconds(pose.getTargetDurationSeconds())
+            .mlModelKey(pose.getMlModelKey())
             .build();
     }
 }

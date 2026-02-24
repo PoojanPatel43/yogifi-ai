@@ -781,6 +781,78 @@ export const getNutritionPlansApi = async (): Promise<ApiResponse<any[]>> => {
   }
 };
 
+// ============ Pose Analysis (BlazePose + TFLite) ============
+
+/** A single joint correction returned by the pose service. */
+export interface PoseAnalysisCorrection {
+  joint: string;
+  severity: 'minor' | 'moderate' | 'major';
+  instruction: string;
+  current_angle?: number;
+  target_angle?: number;
+  deviation?: number;
+}
+
+/** Full result from POST /api/pose/analyze-frame */
+export interface PoseAnalysisResult {
+  pose_detected: boolean;
+  pose_name: string;
+  confidence: number;   // 0–1
+  score: number;        // 0–100
+  corrections: PoseAnalysisCorrection[];
+  /** 33 BlazePose landmarks, normalized 0–1 */
+  keypoints: Array<{ x: number; y: number; visibility: number }>;
+  supported_pose: boolean;
+  full_body_visible: boolean;
+  error?: string;
+}
+
+/**
+ * Send a base64-encoded JPEG camera frame for pose analysis.
+ * Spring Boot proxies this to the Python pose-service on port 8001.
+ *
+ * @param frame     Base64-encoded JPEG string (no data: URI prefix)
+ * @param sessionId Optional active session ID
+ */
+export const analyzeFrameApi = async (
+  frame: string,
+  sessionId?: string
+): Promise<ApiResponse<PoseAnalysisResult>> => {
+  try {
+    const response = await api.post('/pose/analyze-frame', {
+      frame,
+      sessionId: sessionId ?? null,
+    });
+    const backendResponse = response.data;
+    if (backendResponse.success) {
+      return { success: true, data: backendResponse.data };
+    }
+    return { success: false, error: backendResponse.message || 'Pose analysis failed' };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: extractErrorMessage(error, 'Pose analysis failed'),
+    };
+  }
+};
+
+/**
+ * Fetch the pose names the ML model was trained on.
+ * Used to show only supported poses on PoseSelectionScreen.
+ */
+export const getSupportedPosesApi = async (): Promise<ApiResponse<string[]>> => {
+  try {
+    const response = await api.get('/pose/supported-poses');
+    const backendResponse = response.data;
+    if (backendResponse.success) {
+      return { success: true, data: backendResponse.data };
+    }
+    return { success: false, error: backendResponse.message || 'Failed to fetch supported poses' };
+  } catch (error: any) {
+    return { success: false, error: extractErrorMessage(error, 'Failed to fetch supported poses') };
+  }
+};
+
 // ============ Health Check ============
 
 export const healthCheckApi = async (): Promise<boolean> => {
