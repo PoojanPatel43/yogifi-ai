@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Play } from 'lucide-react';
+import { Play, Cpu } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../../lib/api';
 
@@ -11,6 +11,7 @@ interface Pose {
   description: string;
   imageUrl?: string;
   targetDurationSeconds: number;
+  mlModelKey?: string;
 }
 
 const PosesView: React.FC = () => {
@@ -63,6 +64,12 @@ const PosesView: React.FC = () => {
               <div className="absolute top-3 right-3 bg-charcoal/80 backdrop-blur-md px-3 py-1 rounded-full border border-cream/10 font-mono text-[10px] uppercase text-cream/70 tracking-widest">
                 {pose.difficulty}
               </div>
+              {pose.mlModelKey && (
+                <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-clay/90 backdrop-blur-md px-2 py-1 rounded-full font-mono text-[9px] uppercase text-charcoal font-bold tracking-widest">
+                  <Cpu size={10} />
+                  AI Tracking
+                </div>
+              )}
             </div>
 
             <div className="flex-1">
