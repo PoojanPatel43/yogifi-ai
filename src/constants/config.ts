@@ -36,6 +36,7 @@ export const APP_CONFIG = {
   ENABLE_HAPTIC_FEEDBACK: true,
   ENABLE_CONFETTI_ANIMATION: true,
   CONFETTI_SCORE_THRESHOLD: 80, // Show confetti for scores above this
+  SHOW_PROGRESS_BAR: true, // Show session progress bar
 
   // API Settings
   API_TIMEOUT_MS: 10000,
