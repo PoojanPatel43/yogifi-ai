@@ -11,12 +11,31 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Unified LLM gateway for Anthropic Claude and Google Gemini.
+ *
+ * Two call modes:
+ *   chat()        – conversational, temperature 0.7, returns raw text
+ *   chatForJson() – structured output, temperature 0.1, markdown fences stripped
+ *
+ * Every call returns an LlmCallRecord that callers can forward to
+ * AiObservabilityService for Langfuse tracing.
+ */
 @Service
 @Slf4j
 public class AnthropicService {
+
+    // ── Temperature presets ──────────────────────────────────────────────────
+    private static final double TEMP_CONVERSATIONAL = 0.7;
+    private static final double TEMP_STRUCTURED     = 0.1;   // JSON output
+
+    // ── Context window guard ─────────────────────────────────────────────────
+    /** Maximum number of messages to send to the model (most-recent wins). */
+    public static final int MAX_HISTORY_MESSAGES = 20;
 
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
@@ -37,8 +56,8 @@ public class AnthropicService {
         this.provider = provider;
 
         if (apiKey == null || apiKey.isBlank()) {
-            log.warn("AI_API_KEY is not set. AI features will not work until a valid API key is configured.");
-            apiKey = ""; // Prevent null pointer
+            log.warn("AI_API_KEY is not set — AI features will be unavailable.");
+            apiKey = "";
         }
 
         if ("gemini".equalsIgnoreCase(provider) && !apiUrl.contains("?key=") && !apiKey.isBlank()) {
@@ -51,150 +70,187 @@ public class AnthropicService {
             builder.defaultHeader("x-api-key", apiKey)
                     .defaultHeader("anthropic-version", "2023-06-01")
                     .defaultHeader("Content-Type", "application/json");
-        } else if ("gemini".equalsIgnoreCase(provider)) {
-            // Gemini uses API key in URL query parameter
+        } else {
             builder.defaultHeader("Content-Type", "application/json");
         }
 
         this.webClient = builder.build();
     }
 
-    public String chat(String systemPrompt, List<Map<String, String>> messages) {
-        try {
-            if (webClient == null) {
-                throw new IllegalStateException(
-                        "AI service is not configured. Please set the AI_API_KEY environment variable.");
-            }
+    // ── Public API ───────────────────────────────────────────────────────────
 
-            if ("gemini".equalsIgnoreCase(provider)) {
-                return chatWithGemini(systemPrompt, messages);
-            } else {
-                return chatWithAnthropic(systemPrompt, messages);
+    /** Conversational call — higher temperature, returns raw text. */
+    public LlmCallRecord chat(String systemPrompt, List<Map<String, String>> messages) {
+        return call(systemPrompt, messages, TEMP_CONVERSATIONAL);
+    }
+
+    /**
+     * Structured-output call — low temperature, markdown fences stripped.
+     * Use for every prompt that expects JSON back.
+     */
+    public LlmCallRecord chatForJson(String systemPrompt, List<Map<String, String>> messages) {
+        LlmCallRecord record = call(systemPrompt, messages, TEMP_STRUCTURED);
+        return record.withText(stripMarkdownFences(record.text()));
+    }
+
+    // ── Core dispatch ────────────────────────────────────────────────────────
+
+    private LlmCallRecord call(String systemPrompt,
+                               List<Map<String, String>> messages,
+                               double temperature) {
+        // Trim history to avoid ballooning context
+        List<Map<String, String>> trimmed = messages.size() > MAX_HISTORY_MESSAGES
+                ? messages.subList(messages.size() - MAX_HISTORY_MESSAGES, messages.size())
+                : messages;
+
+        Instant start = Instant.now();
+        try {
+            String text = "gemini".equalsIgnoreCase(provider)
+                    ? callGemini(systemPrompt, trimmed, temperature)
+                    : callAnthropic(systemPrompt, trimmed, temperature);
+
+            long latencyMs = Duration.between(start, Instant.now()).toMillis();
+            log.debug("[AI] provider={} model={} latency={}ms messages={}",
+                    provider, model, latencyMs, trimmed.size());
+            return new LlmCallRecord(text, model, provider, latencyMs, null);
+
+        } catch (org.springframework.web.reactive.function.client.WebClientResponseException e) {
+            log.error("[AI] HTTP error {} after {}ms: {}",
+                    e.getStatusCode(), Duration.between(start, Instant.now()).toMillis(),
+                    e.getResponseBodyAsString());
+
+            if (e.getStatusCode().value() == 401) {
+                throw new IllegalStateException(
+                        "AI API key is invalid or missing. Check AI_API_KEY.");
             }
+            String detail = e.getResponseBodyAsString();
+            throw new RuntimeException("AI service error (" + e.getStatusCode() + "): " + detail);
 
         } catch (IllegalStateException e) {
             throw e;
-        } catch (org.springframework.web.reactive.function.client.WebClientResponseException e) {
-            log.error("Error calling AI API: {} - Response body: {}", e.getMessage(), e.getResponseBodyAsString());
-            String msg = e.getMessage() != null ? e.getMessage() : "Unknown error";
-            String responseBody = e.getResponseBodyAsString();
-
-            if (msg.contains("401") || msg.contains("Unauthorized") || msg.contains("invalid")) {
-                throw new IllegalStateException(
-                        "AI service API key is invalid or missing. Please check the AI_API_KEY configuration.");
-            }
-            if (msg.contains("400") || msg.contains("Bad Request")) {
-                throw new RuntimeException("AI service request error: " + responseBody);
-            }
-            throw new RuntimeException("AI service is temporarily unavailable. Please try again in a moment.");
         } catch (Exception e) {
-            log.error("Error calling AI API: {}", e.getMessage(), e);
-            String msg = e.getMessage() != null ? e.getMessage() : "Unknown error";
-            if (msg.contains("401") || msg.contains("Unauthorized") || msg.contains("invalid")) {
-                throw new IllegalStateException(
-                        "AI service API key is invalid or missing. Please check the AI_API_KEY configuration.");
-            }
-            throw new RuntimeException("AI service is temporarily unavailable. Please try again in a moment.");
+            long latencyMs = Duration.between(start, Instant.now()).toMillis();
+            log.error("[AI] Unexpected error after {}ms: {}", latencyMs, e.getMessage(), e);
+            throw new RuntimeException("AI service temporarily unavailable: " + e.getMessage());
         }
     }
 
-    private String chatWithGemini(String systemPrompt, List<Map<String, String>> messages) throws Exception {
-        ObjectNode requestBody = objectMapper.createObjectNode();
+    // ── Provider implementations ─────────────────────────────────────────────
 
-        // Build contents array with system prompt first
-        ArrayNode contentsArray = objectMapper.createArrayNode();
+    private String callGemini(String systemPrompt,
+                               List<Map<String, String>> messages,
+                               double temperature) throws Exception {
+        ObjectNode body = objectMapper.createObjectNode();
+        ArrayNode contents = objectMapper.createArrayNode();
 
-        // Add system prompt as first user message
-        ObjectNode systemMsg = objectMapper.createObjectNode();
-        systemMsg.put("role", "user");
-        ArrayNode systemParts = objectMapper.createArrayNode();
-        ObjectNode systemPart = objectMapper.createObjectNode();
-        systemPart.put("text", systemPrompt);
-        systemParts.add(systemPart);
-        systemMsg.set("parts", systemParts);
-        contentsArray.add(systemMsg);
+        // Gemini has no dedicated system role — prepend as first user turn
+        ObjectNode sysMsg = objectMapper.createObjectNode();
+        sysMsg.put("role", "user");
+        ArrayNode sysParts = objectMapper.createArrayNode();
+        sysParts.add(objectMapper.createObjectNode().put("text", systemPrompt));
+        sysMsg.set("parts", sysParts);
+        contents.add(sysMsg);
 
-        // Add conversation messages
         for (Map<String, String> msg : messages) {
-            ObjectNode msgNode = objectMapper.createObjectNode();
-            String role = msg.get("role");
-            msgNode.put("role", "user".equals(role) ? "user" : "model");
-
+            ObjectNode node = objectMapper.createObjectNode();
+            node.put("role", "user".equals(msg.get("role")) ? "user" : "model");
             ArrayNode parts = objectMapper.createArrayNode();
-            ObjectNode part = objectMapper.createObjectNode();
-            part.put("text", msg.get("content"));
-            parts.add(part);
-            msgNode.set("parts", parts);
-            contentsArray.add(msgNode);
+            parts.add(objectMapper.createObjectNode().put("text", msg.get("content")));
+            node.set("parts", parts);
+            contents.add(node);
         }
 
-        requestBody.set("contents", contentsArray);
+        body.set("contents", contents);
+        ObjectNode genCfg = objectMapper.createObjectNode();
+        genCfg.put("maxOutputTokens", maxTokens);
+        genCfg.put("temperature", temperature);
+        body.set("generationConfig", genCfg);
 
-        // Add generation config
-        ObjectNode generationConfig = objectMapper.createObjectNode();
-        generationConfig.put("maxOutputTokens", maxTokens);
-        generationConfig.put("temperature", 0.7);
-        requestBody.set("generationConfig", generationConfig);
-
-        log.debug("Sending request to Gemini API: {}", requestBody.toPrettyString());
-
-        String responseBody = webClient.post()
+        String raw = webClient.post()
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(requestBody)
+                .bodyValue(body)
                 .retrieve()
                 .bodyToMono(String.class)
                 .timeout(Duration.ofSeconds(30))
                 .block();
 
-        JsonNode response = objectMapper.readTree(responseBody);
-        JsonNode candidates = response.get("candidates");
-        if (candidates != null && candidates.isArray() && candidates.size() > 0) {
-            JsonNode firstCandidate = candidates.get(0);
-            JsonNode content = firstCandidate.get("content");
-            if (content != null) {
-                JsonNode parts = content.get("parts");
-                if (parts != null && parts.isArray() && parts.size() > 0) {
-                    return parts.get(0).get("text").asText();
-                }
+        JsonNode resp = objectMapper.readTree(raw);
+        JsonNode candidates = resp.get("candidates");
+        if (candidates != null && candidates.isArray() && !candidates.isEmpty()) {
+            JsonNode parts = candidates.get(0).path("content").path("parts");
+            if (parts.isArray() && !parts.isEmpty()) {
+                return parts.get(0).get("text").asText();
             }
         }
-
-        log.warn("Unexpected Gemini response format: {}", responseBody);
-        return "I apologize, but I encountered an issue processing your request.";
+        log.warn("[Gemini] Unexpected response format: {}", raw);
+        throw new RuntimeException("Unexpected Gemini response format");
     }
 
-    private String chatWithAnthropic(String systemPrompt, List<Map<String, String>> messages) throws Exception {
-        ObjectNode requestBody = objectMapper.createObjectNode();
-        requestBody.put("model", model);
-        requestBody.put("max_tokens", maxTokens);
-        requestBody.put("system", systemPrompt);
+    private String callAnthropic(String systemPrompt,
+                                  List<Map<String, String>> messages,
+                                  double temperature) throws Exception {
+        ObjectNode body = objectMapper.createObjectNode();
+        body.put("model", model);
+        body.put("max_tokens", maxTokens);
+        body.put("temperature", temperature);
+        body.put("system", systemPrompt);
 
-        ArrayNode messagesArray = objectMapper.createArrayNode();
+        ArrayNode msgs = objectMapper.createArrayNode();
         for (Map<String, String> msg : messages) {
-            ObjectNode msgNode = objectMapper.createObjectNode();
-            msgNode.put("role", msg.get("role"));
-            msgNode.put("content", msg.get("content"));
-            messagesArray.add(msgNode);
+            ObjectNode node = objectMapper.createObjectNode();
+            node.put("role", msg.get("role"));
+            node.put("content", msg.get("content"));
+            msgs.add(node);
         }
-        requestBody.set("messages", messagesArray);
+        body.set("messages", msgs);
 
-        log.debug("Sending request to Anthropic API: {}", requestBody.toPrettyString());
-
-        String responseBody = webClient.post()
+        String raw = webClient.post()
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(requestBody)
+                .bodyValue(body)
                 .retrieve()
                 .bodyToMono(String.class)
                 .timeout(Duration.ofSeconds(30))
                 .block();
 
-        JsonNode response = objectMapper.readTree(responseBody);
-        JsonNode content = response.get("content");
-        if (content != null && content.isArray() && content.size() > 0) {
+        JsonNode resp = objectMapper.readTree(raw);
+        JsonNode content = resp.get("content");
+        if (content != null && content.isArray() && !content.isEmpty()) {
             return content.get(0).get("text").asText();
         }
+        log.warn("[Anthropic] Unexpected response format: {}", raw);
+        throw new RuntimeException("Unexpected Anthropic response format");
+    }
 
-        log.warn("Unexpected Anthropic response format: {}", responseBody);
-        return "I apologize, but I encountered an issue processing your request.";
+    // ── Utilities ────────────────────────────────────────────────────────────
+
+    /** Strip ```json ... ``` fences that Gemini sometimes wraps JSON output in. */
+    public static String stripMarkdownFences(String text) {
+        if (text == null) return "";
+        String trimmed = text.trim();
+        if (trimmed.startsWith("```")) {
+            trimmed = trimmed.replaceAll("^```[a-zA-Z]*\\s*", "")
+                             .replaceAll("\\s*```$", "")
+                             .trim();
+        }
+        return trimmed;
+    }
+
+    // ── Value type for observability ─────────────────────────────────────────
+
+    /**
+     * Immutable record of a single LLM call — passed to AiObservabilityService
+     * for Langfuse tracing.
+     */
+    public record LlmCallRecord(
+            String text,
+            String model,
+            String provider,
+            long latencyMs,
+            String error
+    ) {
+        public LlmCallRecord withText(String newText) {
+            return new LlmCallRecord(newText, model, provider, latencyMs, error);
+        }
+        public boolean isSuccess() { return error == null; }
     }
 }
