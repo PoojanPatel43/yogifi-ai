@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { hasAccessToken } from '../lib/api';
 
 const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    setIsLoggedIn(!!localStorage.getItem('token'));
+    setIsLoggedIn(hasAccessToken());
 
     const handleScroll = () => {
       setScrolled(window.scrollY > 50);

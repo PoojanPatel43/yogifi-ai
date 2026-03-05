@@ -8,12 +8,14 @@ import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SignatureException;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
+import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -31,6 +33,31 @@ public class JwtService {
 
     @Value("${jwt.refresh-expiration}")
     private long refreshExpiration;
+
+    /** Fail fast at startup if JWT_SECRET is missing or too short (< 32 decoded bytes). */
+    @PostConstruct
+    public void validateSecret() {
+        if (secretKey == null || secretKey.isBlank()) {
+            throw new IllegalStateException(
+                "JWT_SECRET environment variable is not set. " +
+                "Generate one with: openssl rand -base64 64");
+        }
+        byte[] decoded;
+        try {
+            decoded = Base64.getDecoder().decode(secretKey);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException(
+                "JWT_SECRET is not valid Base64. " +
+                "Generate one with: openssl rand -base64 64", e);
+        }
+        if (decoded.length < 32) {
+            throw new IllegalStateException(
+                "JWT_SECRET is too short (" + decoded.length + " bytes). " +
+                "Minimum 32 bytes required for HS256. " +
+                "Generate one with: openssl rand -base64 64");
+        }
+        log.info("JWT secret validated ({} bytes)", decoded.length);
+    }
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);

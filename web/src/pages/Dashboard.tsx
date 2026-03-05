@@ -1,18 +1,29 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { LayoutDashboard, LogOut, MessageSquare, HandMetal, Dumbbell, ChefHat, Play } from 'lucide-react';
+import api, { clearAccessToken, hasAccessToken, initSession } from '../lib/api';
 
 const Dashboard: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const [sessionReady, setSessionReady] = useState(false);
 
-  // Simple check for auth (in real app, use Context or verify token validity)
+  // If no in-memory token (e.g. after page refresh), try recovering via httpOnly cookie.
+  // If cookie is also missing/expired, redirect to login.
   useEffect(() => {
-    if (!localStorage.getItem('token')) {
-      navigate('/login');
+    if (hasAccessToken()) {
+      setSessionReady(true);
+      return;
     }
+    initSession().then((ok) => {
+      if (ok) {
+        setSessionReady(true);
+      } else {
+        navigate('/login');
+      }
+    });
   }, [navigate]);
 
   useGSAP(() => {
@@ -27,12 +38,17 @@ const Dashboard: React.FC = () => {
     return () => ctx.revert();
   }, []);
 
-  const handleLogout = () => {
-    // Optionally call api.post('/auth/logout') here
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
+  const handleLogout = async () => {
+    try {
+      await api.post('/auth/logout');  // clears httpOnly cookie server-side
+    } catch {
+      // proceed regardless
+    }
+    clearAccessToken();
     navigate('/login');
   };
+
+  if (!sessionReady) return null; // wait for session check before rendering
 
   return (
     <div ref={containerRef} className="min-h-screen bg-[#111111] text-cream font-sans flex overflow-hidden">

@@ -2,13 +2,14 @@ import { useRef, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
+import { hasAccessToken } from '../lib/api';
 
 const Hero = () => {
   const container = useRef<HTMLDivElement>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    setIsLoggedIn(!!localStorage.getItem('token'));
+    setIsLoggedIn(hasAccessToken());
   }, []);
 
   useGSAP(() => {

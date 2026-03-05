@@ -10,6 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -142,6 +143,7 @@ public class AnthropicService {
                 .bodyValue(requestBody)
                 .retrieve()
                 .bodyToMono(String.class)
+                .timeout(Duration.ofSeconds(30))
                 .block();
 
         JsonNode response = objectMapper.readTree(responseBody);
@@ -183,6 +185,7 @@ public class AnthropicService {
                 .bodyValue(requestBody)
                 .retrieve()
                 .bodyToMono(String.class)
+                .timeout(Duration.ofSeconds(30))
                 .block();
 
         JsonNode response = objectMapper.readTree(responseBody);

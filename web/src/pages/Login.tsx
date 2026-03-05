@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { ArrowRight, Loader2 } from 'lucide-react';
-import api from '../lib/api';
+import api, { setAccessToken } from '../lib/api';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -42,9 +42,9 @@ const Login: React.FC = () => {
 
     try {
       const response = await api.post('/auth/login', { email, password });
-      if (response.data && response.data.data) {
-        localStorage.setItem('token', response.data.data.token);
-        localStorage.setItem('refreshToken', response.data.data.refreshToken);
+      if (response.data?.data?.token) {
+        setAccessToken(response.data.data.token);
+        // refresh_token is set as httpOnly cookie by the server automatically
         navigate('/dashboard');
       } else {
         setError('Unexpected response format from server.');
