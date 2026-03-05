@@ -140,11 +140,12 @@ const Session: React.FC = () => {
         setCorrections([]);
         setDetectedPose('');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const apiErr = err as { response?: { status?: number } };
       // 401 → not logged in; show once, don't spam
-      if (err?.response?.status === 401) {
+      if (apiErr?.response?.status === 401) {
         setAnalysisError('Log in to enable AI scoring');
-      } else if (err?.response?.status === 503 || !err?.response) {
+      } else if (apiErr?.response?.status === 503 || !apiErr?.response) {
         setAnalysisError('Pose service offline');
       }
     } finally {

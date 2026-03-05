@@ -1,88 +1,163 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { hasAccessToken } from '../lib/api';
+import { Sun, Moon, Menu, X } from 'lucide-react';
 
 const Navbar = () => {
-  const [scrolled, setScrolled] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [scrolled, setScrolled]    = useState(false);
+  const [isLoggedIn]               = useState(() => hasAccessToken());
+  const [dark, setDark]            = useState(() =>
+    document.documentElement.classList.contains('dark')
+  );
+  const [menuOpen, setMenuOpen]    = useState(false);
 
   useEffect(() => {
-    setIsLoggedIn(hasAccessToken());
-
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    const onScroll = () => setScrolled(window.scrollY > 60);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  const toggleDark = () => {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle('dark', next);
+  };
+
+  const navLinks = [
+    { href: '#features',   label: 'Features'   },
+    { href: '#philosophy', label: 'Philosophy' },
+    { href: '#protocol',   label: 'Method'     },
+    { href: '#pricing',    label: 'Pricing'    },
+  ];
+
   return (
-    <nav
-      className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-500 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] px-6 py-3.5 rounded-full flex items-center justify-between w-[92%] max-w-5xl ${
-        scrolled
-          ? 'bg-cream/60 backdrop-blur-xl border border-moss/10 text-moss shadow-sm translate-y-0'
-          : 'bg-transparent text-cream border border-transparent translate-y-2'
-      }`}
-    >
-      <div className="font-outfit font-bold text-xl tracking-tight">
-        Yogifi AI
-      </div>
+    <>
+      <nav
+        className={`fixed top-5 left-1/2 -translate-x-1/2 z-50 w-[94%] max-w-5xl
+          px-5 py-3 rounded-full flex items-center justify-between
+          transition-all duration-500 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]
+          ${scrolled
+            ? 'bg-warmwhite/85 dark:bg-forest-dark/90 backdrop-blur-xl border border-sage/20 shadow-md'
+            : 'bg-transparent border border-transparent'
+          }`}
+      >
+        {/* Logo */}
+        <Link to="/" className="flex items-center gap-2.5 select-none">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold
+            ${scrolled ? 'bg-forest text-warmwhite' : 'bg-warmwhite/15 text-warmwhite border border-warmwhite/30'}`}>
+            Y
+          </div>
+          <span className={`font-outfit font-bold text-lg tracking-tight
+            ${scrolled ? 'text-forest dark:text-warmwhite' : 'text-warmwhite'}`}>
+            Yogifi AI
+          </span>
+        </Link>
 
-      <div className="hidden md:flex items-center gap-8 text-sm font-sans font-semibold">
-        <a href="#features" className={`link-lift-color ${scrolled ? 'hover:text-clay' : 'hover:text-clay text-cream'}`}>Features</a>
-        <a href="#philosophy" className={`link-lift-color ${scrolled ? 'hover:text-clay' : 'hover:text-clay text-cream'}`}>Philosophy</a>
-        <a href="#protocol" className={`link-lift-color ${scrolled ? 'hover:text-clay' : 'hover:text-clay text-cream'}`}>Method</a>
-      </div>
-
-      {isLoggedIn ? (
-        /* Logged-in state: show dashboard links */
-        <div className="flex items-center gap-3">
-          <Link to="/dashboard/poses" className={`hidden md:block text-sm font-sans font-semibold transition-colors ${scrolled ? 'text-moss hover:text-clay' : 'text-cream hover:text-clay'}`}>
-            Poses
-          </Link>
-          <Link to="/dashboard/chat" className={`hidden md:block text-sm font-sans font-semibold transition-colors ${scrolled ? 'text-moss hover:text-clay' : 'text-cream hover:text-clay'}`}>
-            AI Chat
-          </Link>
-          <Link to="/dashboard/fitness" className={`hidden md:block text-sm font-sans font-semibold transition-colors ${scrolled ? 'text-moss hover:text-clay' : 'text-cream hover:text-clay'}`}>
-            Exercise
-          </Link>
-          <Link to="/dashboard/nutrition" className={`hidden md:block text-sm font-sans font-semibold transition-colors ${scrolled ? 'text-moss hover:text-clay' : 'text-cream hover:text-clay'}`}>
-            Nutrition
-          </Link>
-          <Link to="/dashboard" className="magnetic-btn btn-clay bg-clay text-cream px-6 py-2.5 rounded-full text-sm font-sans font-bold shadow-md hover-lift inline-flex items-center justify-center">
-            <span>Dashboard →</span>
-          </Link>
+        {/* Desktop links */}
+        <div className="hidden md:flex items-center gap-7 text-sm font-sans font-semibold">
+          {navLinks.map(({ href, label }) => (
+            <a
+              key={href}
+              href={href}
+              className={`link-lift transition-colors duration-200
+                ${scrolled ? 'text-forest/70 hover:text-forest dark:text-warmwhite/70 dark:hover:text-gold' : 'text-warmwhite/75 hover:text-warmwhite'}`}
+            >
+              {label}
+            </a>
+          ))}
         </div>
-      ) : (
-        /* Logged-out state: show login / sign up */
-        <>
-          <div className="hidden sm:flex items-center gap-4">
-            <Link to="/login" className={`text-sm font-sans font-semibold transition-colors ${scrolled ? 'text-moss hover:text-clay' : 'text-cream hover:text-clay'}`}>
-              Log In
-            </Link>
-            <a href="#pricing" className="magnetic-btn btn-clay bg-clay text-cream px-6 py-2.5 rounded-full text-sm font-sans font-bold shadow-md hidden lg:block hover-lift inline-flex items-center justify-center">
-              <span>Join Waitlist</span>
-            </a>
-            <Link to="/signup" className="magnetic-btn bg-charcoal text-cream px-6 py-2.5 rounded-full text-sm font-sans font-bold shadow-md hidden sm:block lg:hidden hover-lift inline-flex items-center justify-center">
-              <span>Sign Up</span>
-            </Link>
-            <Link to="/signup" className="magnetic-btn border border-clay text-clay px-6 py-2.5 rounded-full text-sm font-sans font-bold shadow-md hidden lg:block hover:bg-clay hover:text-cream transition-colors hover-lift inline-flex items-center justify-center">
-              <span>Sign Up</span>
-            </Link>
-          </div>
 
-          {/* Mobile CTA only */}
-          <div className="flex sm:hidden items-center gap-3">
-            <Link to="/login" className={`text-xs font-sans font-bold ${scrolled ? 'text-moss' : 'text-cream'}`}>
+        {/* Right actions */}
+        <div className="flex items-center gap-3">
+          {/* Dark mode toggle */}
+          <button
+            onClick={toggleDark}
+            aria-label="Toggle dark mode"
+            className={`p-2 rounded-full transition-colors duration-200
+              ${scrolled ? 'text-forest/60 hover:bg-forest/8 dark:text-warmwhite/60' : 'text-warmwhite/60 hover:bg-warmwhite/10'}`}
+          >
+            {dark ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+
+          {isLoggedIn ? (
+            <Link
+              to="/dashboard"
+              className="btn-primary !px-5 !py-2.5 text-sm"
+            >
+              <span>Dashboard →</span>
+            </Link>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className={`hidden sm:block text-sm font-semibold transition-colors duration-200
+                  ${scrolled ? 'text-forest/70 hover:text-forest dark:text-warmwhite/70' : 'text-warmwhite/75 hover:text-warmwhite'}`}
+              >
+                Log In
+              </Link>
+              <a
+                href="#pricing"
+                className="btn-primary !px-5 !py-2.5 text-sm"
+              >
+                <span>Join Waitlist</span>
+              </a>
+            </>
+          )}
+
+          {/* Mobile menu toggle */}
+          <button
+            onClick={() => setMenuOpen(v => !v)}
+            className={`md:hidden p-2 rounded-full transition-colors
+              ${scrolled ? 'text-forest hover:bg-forest/8' : 'text-warmwhite hover:bg-warmwhite/10'}`}
+            aria-label="Toggle menu"
+          >
+            {menuOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
+        </div>
+      </nav>
+
+      {/* Mobile slide-down menu */}
+      <div
+        className={`fixed top-[72px] left-1/2 -translate-x-1/2 w-[94%] max-w-5xl z-40
+          bg-warmwhite/95 dark:bg-forest-dark/95 backdrop-blur-xl rounded-[1.5rem]
+          border border-sage/20 shadow-xl overflow-hidden
+          transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]
+          ${menuOpen ? 'max-h-80 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}
+      >
+        <div className="flex flex-col p-5 gap-1">
+          {navLinks.map(({ href, label }) => (
+            <a
+              key={href}
+              href={href}
+              onClick={() => setMenuOpen(false)}
+              className="text-forest dark:text-warmwhite font-semibold text-base
+                px-4 py-3 rounded-xl hover:bg-forest/6 dark:hover:bg-warmwhite/6
+                transition-colors duration-150"
+            >
+              {label}
+            </a>
+          ))}
+          <div className="border-t border-sage/20 mt-2 pt-3 flex gap-3">
+            <Link
+              to="/login"
+              onClick={() => setMenuOpen(false)}
+              className="flex-1 text-center text-forest dark:text-warmwhite font-semibold
+                px-4 py-3 rounded-xl border border-forest/20 dark:border-warmwhite/20
+                hover:bg-forest/6 transition-colors text-sm"
+            >
               Log In
             </Link>
-            <a href="#pricing" className="magnetic-btn btn-clay bg-clay text-cream px-5 py-2 rounded-full text-xs font-sans font-bold shadow-md hover-lift inline-flex items-center justify-center">
-              <span>Join</span>
+            <a
+              href="#pricing"
+              onClick={() => setMenuOpen(false)}
+              className="flex-1 text-center btn-primary !py-3 text-sm"
+            >
+              Join Waitlist
             </a>
           </div>
-        </>
-      )}
-    </nav>
+        </div>
+      </div>
+    </>
   );
 };
 

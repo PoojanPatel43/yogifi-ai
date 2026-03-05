@@ -23,9 +23,10 @@ const AIChatView: React.FC = () => {
           // Backend returns List<ChatHistoryResponse>:
           // [{ conversationId, title, updatedAt, messages: [{ role, content, createdAt }] }]
           // Flatten all conversations' messages into a single list
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const history: ChatMessage[] = res.data.data.flatMap((conversation: any, ci: number) =>
-            (conversation.messages || []).map((msg: any, mi: number) => ({
+          type RawMsg = { role?: string; content?: string; message?: string };
+          type RawConversation = { messages?: RawMsg[] };
+          const history: ChatMessage[] = res.data.data.flatMap((conversation: RawConversation, ci: number) =>
+            (conversation.messages || []).map((msg: RawMsg, mi: number) => ({
               id: `hist-${ci}-${mi}`,
               role: (msg.role || 'AI').toUpperCase() as 'USER' | 'AI',
               content: msg.content || msg.message || ''

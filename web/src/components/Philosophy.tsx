@@ -7,76 +7,80 @@ gsap.registerPlugin(ScrollTrigger);
 
 const Philosophy = () => {
   const sectionRef = useRef<HTMLElement>(null);
-  
-  // To avoid installing SplitType just for this, we split the text manually into words or wrapped spans.
-  const bigText = "We focus on: understanding your body like a living instrument.";
-  const words = bigText.split(' ');
+
+  const bigText = 'We focus on: understanding your body like a living instrument.';
+  const words    = bigText.split(' ');
 
   useGSAP(() => {
-    // Parallax background using background-attachment: fixed doesn't need GSAP if it's CSS, 
-    // but GSAP can also animate the background position for smoother parallax. CSS `fixed` is usually fine for this design requirement.
-    
     gsap.from('.phil-word', {
-      scrollTrigger: {
-        trigger: '.philosophy-big',
-        start: 'top 85%',
-      },
+      scrollTrigger: { trigger: '.philosophy-big', start: 'top 85%' },
       y: 30,
       opacity: 0,
-      stagger: 0.08,
+      stagger: 0.07,
       ease: 'power2.out',
-      duration: 1
+      duration: 0.9,
     });
-
     gsap.from('.phil-small', {
-      scrollTrigger: {
-        trigger: sectionRef.current,
-        start: 'top 80%',
-      },
+      scrollTrigger: { trigger: sectionRef.current, start: 'top 80%' },
       y: 20,
       opacity: 0,
-      duration: 1
+      duration: 1,
     });
-
   }, { scope: sectionRef });
 
   return (
-    <section ref={sectionRef} id="philosophy" className="relative w-full bg-[#1A1A1A] py-32 md:py-48 px-6 md:px-12 lg:px-20 overflow-hidden text-center md:text-left flex flex-col items-center justify-center min-h-[80vh]">
-      
-      {/* Background Parallax Texture */}
-      <div 
+    <section
+      ref={sectionRef}
+      id="philosophy"
+      className="relative w-full bg-charcoal py-32 md:py-48 px-6 md:px-12 lg:px-20
+        overflow-hidden text-center flex flex-col items-center justify-center min-h-[80vh]"
+    >
+      {/* Background parallax yoga image */}
+      <div
         className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
-        style={{ 
+        style={{
           backgroundImage: "url('https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?w=1800&q=85&auto=format&fit=crop')",
           backgroundAttachment: 'fixed',
-          opacity: 0.06 
+          opacity: 0.06,
         }}
       />
 
+      {/* Subtle gold radial glow */}
+      <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none">
+        <div className="w-[600px] h-[600px] bg-gold/5 blur-[160px] rounded-full" />
+      </div>
+
       <div className="relative z-10 w-full max-w-4xl mx-auto flex flex-col items-center text-center">
-        
-        <p className="phil-small font-outfit font-light text-cream/45 text-[clamp(1rem,2vw,1.25rem)] leading-relaxed max-w-3xl mb-12">
-          "Most wellness apps focus on: generic video libraries, <br className="hidden md:block"/> one-size-fits-all routines, and passive consumption."
+
+        {/* Contrast quote */}
+        <p className="phil-small font-outfit font-light text-warmwhite/40 text-[clamp(0.95rem,2vw,1.2rem)] leading-relaxed max-w-2xl mb-10">
+          "Most wellness apps focus on: generic video libraries,&nbsp;
+          <br className="hidden md:block" />
+          one-size-fits-all routines, and passive consumption."
         </p>
 
-        <div className="phil-small w-[60px] h-[2px] bg-clay mb-12 mx-auto" />
+        {/* Divider line */}
+        <div className="phil-small w-14 h-px bg-gold/40 mb-10 mx-auto" />
 
-        <div className="philosophy-big font-serif italic font-light text-[clamp(2.5rem,6vw,6rem)] leading-[1.1] text-cream w-full">
+        {/* Big serif statement */}
+        <div className="philosophy-big font-serif italic font-light text-[clamp(2.5rem,6vw,6rem)] leading-[1.1] text-warmwhite w-full">
           {words.map((word, i) => {
-            let className = "phil-word inline-block mr-[0.3em] overflow-hidden ";
-            if (word.includes('understanding') || word.includes('instrument')) {
-              className += "text-clay font-medium";
-            }
-            if (word === 'like') {
-               // force break on mobile if needed, but flex wrap usually handles it
-            }
+            const isAccent = word.includes('understanding') || word.includes('instrument');
             return (
-              <span key={i} className={className}>
+              <span
+                key={i}
+                className={`phil-word inline-block mr-[0.28em] ${isAccent ? 'text-gold' : ''}`}
+              >
                 {word}
               </span>
             );
           })}
         </div>
+
+        {/* Attribution */}
+        <p className="phil-small font-mono text-xs tracking-widest text-warmwhite/20 mt-10 uppercase">
+          The Yogifi Philosophy
+        </p>
       </div>
     </section>
   );

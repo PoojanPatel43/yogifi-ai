@@ -1,85 +1,153 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,300;1,400&family=IBM+Plex+Mono:wght@400;500&family=Outfit:wght@300;400;700&family=Plus+Jakarta+Sans:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,300;1,400;1,600&family=IBM+Plex+Mono:wght@400;500&family=Outfit:wght@300;400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ─── CSS custom properties ──────────────────────────────────────────── */
+:root {
+  --color-bg:        #FAFAF8;
+  --color-fg:        #1A1A1A;
+  --color-primary:   #1B4332;
+  --color-accent:    #D4AF37;
+  --color-secondary: #87A878;
+  --color-surface:   #F0EDE6;
+}
+.dark {
+  --color-bg:        #0D1A12;
+  --color-fg:        #FAFAF8;
+  --color-primary:   #2D6A4F;
+  --color-accent:    #D4AF37;
+  --color-secondary: #87A878;
+  --color-surface:   #1A2E22;
+}
+
 @layer base {
+  html { scroll-behavior: smooth; }
+
   body {
-    @apply bg-cream text-charcoal antialiased overflow-x-hidden relative min-h-screen selection:bg-clay selection:text-cream;
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    @apply antialiased overflow-x-hidden relative min-h-screen;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-  
-  /* Noise overlay */
+  ::selection { background: #1B4332; color: #FAFAF8; }
+
+  /* Subtle noise texture overlay */
   body::before {
     content: "";
     position: fixed;
-    top: 0;
-    left: 0;
+    inset: 0;
     width: 100vw;
     height: 100vh;
     pointer-events: none;
     z-index: 9999;
-    opacity: 0.05;
-    background: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E');
+    opacity: 0.032;
+    background: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="n"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="4" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23n)"/%3E%3C/svg%3E');
   }
 
   /* Scrollbar */
-  ::-webkit-scrollbar {
-    width: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    @apply bg-cream;
-  }
-  ::-webkit-scrollbar-thumb {
-    @apply bg-charcoal/20 rounded-full;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-charcoal/40;
-  }
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(27,67,50,0.2); border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(27,67,50,0.4); }
 }
 
 @layer components {
-  /* Radius system */
-  .rounded-system {
-    border-radius: clamp(2rem, 3vw, 3rem);
+  /* ── Radius system ── */
+  .rounded-system { border-radius: clamp(1.5rem, 3vw, 3rem); }
+
+  /* ── Primary button: gold fill ── */
+  .btn-primary {
+    @apply relative overflow-hidden inline-flex items-center justify-center gap-2
+           bg-gold text-forest font-sans font-bold rounded-full
+           px-8 py-4 transition-all duration-300 select-none;
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 14px 36px rgba(212,175,55,0.4);
+  }
+  .btn-primary:active { transform: translateY(0) scale(0.99); }
+
+  /* ── Secondary button: forest outline ── */
+  .btn-secondary {
+    @apply relative overflow-hidden inline-flex items-center justify-center gap-2
+           border border-forest/30 text-forest font-sans font-semibold rounded-full
+           px-8 py-4 transition-all duration-300 select-none;
+  }
+  .btn-secondary:hover {
+    @apply bg-forest/6 border-forest/60;
+    transform: translateY(-1px);
   }
 
-  /* Magnetic Button */
+  /* ── Ghost button: on dark backgrounds ── */
+  .btn-ghost {
+    @apply relative overflow-hidden inline-flex items-center justify-center gap-2
+           border border-warmwhite/25 text-warmwhite font-sans font-semibold rounded-full
+           px-8 py-4 transition-all duration-300 select-none;
+  }
+  .btn-ghost:hover {
+    @apply border-warmwhite/60 bg-warmwhite/8;
+    transform: translateY(-1px);
+  }
+
+  /* ── Legacy magnetic button (backward compat) ── */
   .magnetic-btn {
     @apply relative overflow-hidden inline-flex items-center justify-center transition-transform duration-300;
     transition-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
-  .magnetic-btn:hover {
-    transform: scale(1.03);
-  }
+  .magnetic-btn:hover { transform: scale(1.03); }
   .magnetic-btn::after {
     content: "";
     @apply absolute inset-0 bg-charcoal translate-y-full transition-transform duration-300;
     transition-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
     z-index: 0;
   }
-  .magnetic-btn.btn-clay::after {
-    @apply bg-[#b34b29]; /* Darker clay for hover */
-  }
-  .magnetic-btn:hover::after {
-    @apply translate-y-0;
-  }
-  .magnetic-btn > * {
-    @apply relative z-10;
-  }
+  .magnetic-btn.btn-gold::after  { background: #B8930A; }
+  .magnetic-btn.btn-clay::after  { @apply bg-[#b34b29]; }
+  .magnetic-btn:hover::after     { @apply translate-y-0; }
+  .magnetic-btn > *              { @apply relative z-10; }
 
-  /* Link Lift */
+  /* ── Link lift ── */
   .link-lift {
-    @apply transition-transform duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)];
+    @apply transition-transform duration-300;
+    transition-timing-function: cubic-bezier(0.25,0.46,0.45,0.94);
     display: inline-block;
   }
-  .link-lift:hover {
-    transform: translateY(-1px);
+  .link-lift:hover { transform: translateY(-1px); }
+  .link-lift-color { @apply transition-colors duration-300 ease-out; }
+  .link-lift-color:hover { @apply text-gold; }
+
+  /* ── Section label chip ── */
+  .section-label {
+    @apply inline-flex items-center gap-2 font-mono tracking-widest text-gold text-xs uppercase
+           bg-gold/10 px-4 py-1.5 rounded-full;
   }
-  .link-lift-color {
-    @apply transition-colors duration-300 ease-out;
+
+  /* ── Glass card ── */
+  .card-glass {
+    @apply bg-warmwhite/70 backdrop-blur-md border border-warmwhite
+           rounded-[2rem] shadow-sm;
   }
-  .link-lift-color:hover {
-    @apply text-clay;
+  .dark .card-glass {
+    @apply bg-forest-dark/60 border-forest/20;
   }
+
+  /* ── Skeleton shimmer loader ── */
+  .skeleton {
+    background: linear-gradient(90deg, rgba(135,168,120,0.08) 25%, rgba(135,168,120,0.18) 50%, rgba(135,168,120,0.08) 75%);
+    background-size: 400% 100%;
+    @apply animate-shimmer rounded-lg;
+  }
+
+  /* ── Score ring SVG helper ── */
+  .score-ring {
+    transform-origin: center;
+    transform: rotate(-90deg);
+    transition: stroke-dashoffset 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* ── Auth form elem animation class ── */
+  .auth-elem { opacity: 0; }
 }
