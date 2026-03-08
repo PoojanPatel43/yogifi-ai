@@ -1,153 +1,333 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,300;1,400;1,600&family=IBM+Plex+Mono:wght@400;500&family=Outfit:wght@300;400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Dela+Gothic+One&family=Outfit:wght@400;600;700&family=Reenie+Beanie&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ─── CSS custom properties ──────────────────────────────────────────── */
+/* ─── Clauaskee editorial design system ──────────────────────────────── */
 :root {
-  --color-bg:        #FAFAF8;
-  --color-fg:        #1A1A1A;
-  --color-primary:   #1B4332;
-  --color-accent:    #D4AF37;
-  --color-secondary: #87A878;
-  --color-surface:   #F0EDE6;
-}
-.dark {
-  --color-bg:        #0D1A12;
-  --color-fg:        #FAFAF8;
-  --color-primary:   #2D6A4F;
-  --color-accent:    #D4AF37;
-  --color-secondary: #87A878;
-  --color-surface:   #1A2E22;
+  --bg:      #F7F4EE;
+  --surface: #EDEAE2;
+  --ink:     #1A1816;
+  --muted:   #6B6760;
+  --accent:  #C9472F;
+  --blue:    #3B5BDB;
+  --line:    #D4CFC6;
+  /* ── Wellness Brutalism injections ──────────────────────────────────── */
+  --acid:    #D2E823;   /* acid yellow-green — second accent only         */
+  --brutal:  #09090B;   /* pure ink-black — hard shadows & borders        */
 }
 
 @layer base {
   html { scroll-behavior: smooth; }
-
   body {
-    background-color: var(--color-bg);
-    color: var(--color-fg);
-    @apply antialiased overflow-x-hidden relative min-h-screen;
+    background-color: var(--bg);
+    color: var(--ink);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    font-size: 1.05rem;
+    line-height: 1.7;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
   }
-  ::selection { background: #1B4332; color: #FAFAF8; }
 
-  /* Subtle noise texture overlay */
-  body::before {
-    content: "";
+  /* ── Film grain overlay at 0.35 opacity (single layer — Softly system) */
+  body::after {
+    content: '';
     position: fixed;
     inset: 0;
-    width: 100vw;
-    height: 100vh;
+    z-index: 99998;   /* above everything except cursor (99999) */
     pointer-events: none;
-    z-index: 9999;
-    opacity: 0.032;
-    background: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="n"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="4" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23n)"/%3E%3C/svg%3E');
+    opacity: 0.35;
+    /* SVG inline fractal noise — no external texture required */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 180px 180px;
+    transition: opacity 0.3s ease;
   }
 
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 5px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(27,67,50,0.2); border-radius: 9999px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(27,67,50,0.4); }
+  /* ── Session screen: suppress grain so skeleton + HUD are clearly visible */
+  body.session-active::after {
+    opacity: 0;
+  }
+
+  * { box-sizing: border-box; }
+  ::selection { background: var(--ink); color: var(--bg); }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--line); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* ── Hide default cursor on pointer devices — replaced by BrutalistCursor.
+        Excluded on the session screen (body.session-active) because:
+        1. BrutalistCursor is not rendered inside Session.tsx.
+        2. mix-blend-mode:difference with a white circle on the near-black
+           camera background (#0E0D0C) produces near-zero contrast — the
+           custom cursor effectively disappears.
+        When session-active is set, the native cursor is restored so the user
+        can still see and interact with the HUD controls and the End Session
+        button. The `cursor: auto` rule below re-enables it without the
+        !important override fighting the HUD button `cursor: pointer` values. */
+  @media (hover: hover) and (pointer: fine) {
+    body:not(.session-active) * { cursor: none !important; }
+    body.session-active * { cursor: auto; }
+    body.session-active button,
+    body.session-active a { cursor: pointer; }
+  }
 }
 
 @layer components {
-  /* ── Radius system ── */
-  .rounded-system { border-radius: clamp(1.5rem, 3vw, 3rem); }
+  /* ── Square editorial buttons (no border-radius ever) ── */
+  .btn-ink {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.7rem 1.8rem;
+    font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 400;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    border: 1px solid var(--ink); color: var(--ink); background: transparent;
+    cursor: pointer; text-decoration: none;
+    transition: background 0.2s cubic-bezier(0.25,0.46,0.45,0.94),
+                color 0.2s cubic-bezier(0.25,0.46,0.45,0.94);
+  }
+  .btn-ink:hover { background: var(--ink); color: var(--bg); }
 
-  /* ── Primary button: gold fill ── */
-  .btn-primary {
-    @apply relative overflow-hidden inline-flex items-center justify-center gap-2
-           bg-gold text-forest font-sans font-bold rounded-full
-           px-8 py-4 transition-all duration-300 select-none;
+  .btn-accent {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.7rem 1.8rem;
+    font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 400;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    border: 1px solid var(--accent); color: var(--accent); background: transparent;
+    cursor: pointer; text-decoration: none;
+    transition: background 0.2s cubic-bezier(0.25,0.46,0.45,0.94),
+                color 0.2s cubic-bezier(0.25,0.46,0.45,0.94);
   }
-  .btn-primary:hover {
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 14px 36px rgba(212,175,55,0.4);
-  }
-  .btn-primary:active { transform: translateY(0) scale(0.99); }
+  .btn-accent:hover { background: var(--accent); color: var(--bg); }
 
-  /* ── Secondary button: forest outline ── */
-  .btn-secondary {
-    @apply relative overflow-hidden inline-flex items-center justify-center gap-2
-           border border-forest/30 text-forest font-sans font-semibold rounded-full
-           px-8 py-4 transition-all duration-300 select-none;
+  .btn-light {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.7rem 1.8rem;
+    font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 400;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    border: 1px solid var(--bg); color: var(--bg); background: transparent;
+    cursor: pointer; text-decoration: none;
+    transition: background 0.2s cubic-bezier(0.25,0.46,0.45,0.94),
+                color 0.2s cubic-bezier(0.25,0.46,0.45,0.94);
   }
-  .btn-secondary:hover {
-    @apply bg-forest/6 border-forest/60;
-    transform: translateY(-1px);
+  .btn-light:hover { background: var(--bg); color: var(--ink); }
+
+  /* ── Brutalist CTA button: acid bg, ink text, hard shadow ───────────── */
+  /* Only on non-nav CTA buttons — NOT nav, NOT hero pill CTAs            */
+  .btn-brutalist {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.8rem 2rem;
+    font-family: 'Space Grotesk', sans-serif; font-size: 0.8rem; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    background: var(--brutal); color: var(--acid);
+    border: 2px solid var(--brutal);
+    box-shadow: 4px 4px 0px 0px var(--brutal);
+    cursor: pointer; text-decoration: none;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+    will-change: transform;
+  }
+  .btn-brutalist:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px 0px var(--brutal);
+  }
+  .btn-brutalist:active {
+    transform: translate(4px, 4px);
+    box-shadow: 0px 0px 0px 0px var(--brutal);
   }
 
-  /* ── Ghost button: on dark backgrounds ── */
-  .btn-ghost {
-    @apply relative overflow-hidden inline-flex items-center justify-center gap-2
-           border border-warmwhite/25 text-warmwhite font-sans font-semibold rounded-full
-           px-8 py-4 transition-all duration-300 select-none;
+  /* ── Inputs (editorial underline style) ── */
+  .ck-input {
+    width: 100%; background: transparent;
+    border: none; border-bottom: 1px solid var(--line);
+    padding: 0.75rem 0;
+    font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 300;
+    color: var(--ink); outline: none;
+    transition: border-color 0.2s ease;
   }
-  .btn-ghost:hover {
-    @apply border-warmwhite/60 bg-warmwhite/8;
-    transform: translateY(-1px);
+  .ck-input:focus { border-bottom-color: var(--ink); }
+  .ck-input::placeholder { color: var(--muted); opacity: 0.6; }
+
+  .ck-select {
+    width: 100%; background: transparent;
+    border: none; border-bottom: 1px solid var(--line);
+    padding: 0.75rem 0;
+    font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 300;
+    color: var(--ink); outline: none; cursor: pointer; appearance: none;
+    transition: border-color 0.2s ease;
+  }
+  .ck-select:focus { border-bottom-color: var(--ink); }
+
+  /* ── Label / tag ── */
+  .ck-label {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--muted);
   }
 
-  /* ── Legacy magnetic button (backward compat) ── */
-  .magnetic-btn {
-    @apply relative overflow-hidden inline-flex items-center justify-center transition-transform duration-300;
-    transition-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  }
-  .magnetic-btn:hover { transform: scale(1.03); }
-  .magnetic-btn::after {
-    content: "";
-    @apply absolute inset-0 bg-charcoal translate-y-full transition-transform duration-300;
-    transition-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    z-index: 0;
-  }
-  .magnetic-btn.btn-gold::after  { background: #B8930A; }
-  .magnetic-btn.btn-clay::after  { @apply bg-[#b34b29]; }
-  .magnetic-btn:hover::after     { @apply translate-y-0; }
-  .magnetic-btn > *              { @apply relative z-10; }
+  /* ── Scroll-reveal ── */
+  .reveal { opacity: 0; transform: translateY(30px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
 
-  /* ── Link lift ── */
-  .link-lift {
-    @apply transition-transform duration-300;
-    transition-timing-function: cubic-bezier(0.25,0.46,0.45,0.94);
+  /* ── Marquee ticker (Softly wellness band) ── */
+  .ticker-wrap {
+    overflow: hidden;
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    background: var(--bg); padding: 0.65rem 0;
+  }
+  .ticker-inner {
+    display: inline-flex; gap: 3rem; white-space: nowrap;
+    animation: ticker 22s linear infinite;
+  }
+
+  /* ── Brutalist marquee band (dark, acid text) ── */
+  .brutalist-ticker-wrap {
+    overflow: hidden;
+    background: var(--brutal);
+    padding: 0.8rem 0;
+    border-top: 2px solid var(--brutal);
+    border-bottom: 2px solid var(--brutal);
+  }
+  .brutalist-ticker-inner {
+    display: inline-flex; gap: 4rem; white-space: nowrap;
+    animation: ticker 20s linear infinite;
+  }
+
+  /* ── Dark-context HUD card (session screen) ── */
+  .hud-card {
+    background: rgba(26,24,22,0.72);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(212,207,198,0.12);
+    padding: 1rem 1.25rem;
+  }
+
+  /* ── Outfit display heading (48-96 px range, sentence-case) ── */
+  .font-outfit {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+  }
+
+  /* ── Reenie Beanie cursive emphasis word ── */
+  .font-cursive-em {
+    font-family: 'Reenie Beanie', cursive;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+
+  /* ── Bento grid large card (2×2 span) — responsive override at ≤1024px  */
+  .bento-large {
+    grid-column: 1 / 3;
+    grid-row: 1 / 3;
+  }
+
+  /* ── Brutalist feature card (small 1×1, light bg) ── */
+  .card-brutalist {
+    background: var(--bg);
+    border: 2px solid var(--brutal);
+    box-shadow: 4px 4px 0px 0px var(--brutal);
+    padding: 2.5rem 2rem;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+    will-change: transform;
+  }
+  .card-brutalist:hover {
+    transform: translate(4px, 4px);
+    box-shadow: 0px 0px 0px 0px var(--brutal);
+  }
+
+  /* ── Glitch word (Dela Gothic One, section-title hover only) ── */
+  .glitch-word {
+    font-family: 'Dela Gothic One', sans-serif;
     display: inline-block;
+    position: relative;
   }
-  .link-lift:hover { transform: translateY(-1px); }
-  .link-lift-color { @apply transition-colors duration-300 ease-out; }
-  .link-lift-color:hover { @apply text-gold; }
-
-  /* ── Section label chip ── */
-  .section-label {
-    @apply inline-flex items-center gap-2 font-mono tracking-widest text-gold text-xs uppercase
-           bg-gold/10 px-4 py-1.5 rounded-full;
+  .glitch-word::before,
+  .glitch-word::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0; left: 0;
+    opacity: 0;
+    pointer-events: none;
   }
-
-  /* ── Glass card ── */
-  .card-glass {
-    @apply bg-warmwhite/70 backdrop-blur-md border border-warmwhite
-           rounded-[2rem] shadow-sm;
+  .glitch-word:hover::before {
+    opacity: 1;
+    color: var(--acid);
+    clip-path: polygon(0 0, 100% 0, 100% 40%, 0 40%);
+    animation: glitch-top 0.35s steps(2) infinite;
   }
-  .dark .card-glass {
-    @apply bg-forest-dark/60 border-forest/20;
-  }
-
-  /* ── Skeleton shimmer loader ── */
-  .skeleton {
-    background: linear-gradient(90deg, rgba(135,168,120,0.08) 25%, rgba(135,168,120,0.18) 50%, rgba(135,168,120,0.08) 75%);
-    background-size: 400% 100%;
-    @apply animate-shimmer rounded-lg;
+  .glitch-word:hover::after {
+    opacity: 1;
+    color: var(--accent);
+    clip-path: polygon(0 60%, 100% 60%, 100% 100%, 0 100%);
+    animation: glitch-bottom 0.35s steps(2) infinite;
   }
 
-  /* ── Score ring SVG helper ── */
-  .score-ring {
-    transform-origin: center;
-    transform: rotate(-90deg);
-    transition: stroke-dashoffset 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* ── Custom brutalist cursor (mix-blend-difference white circle) ── */
+  .b-cursor {
+    position: fixed;
+    top: 0; left: 0;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: #ffffff;
+    mix-blend-mode: difference;
+    pointer-events: none;
+    z-index: 99999;
+    will-change: transform;
+    /* Width/height transition for scale effect — transform is set via JS  */
+    transition: width 0.15s ease, height 0.15s ease;
   }
+}
 
-  /* ── Auth form elem animation class ── */
-  .auth-elem { opacity: 0; }
+/* ── Keyframes ───────────────────────────────────────────────────────────── */
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+@keyframes glitch-top {
+  0%   { transform: translateX(-4px); }
+  50%  { transform: translateX(4px);  }
+  100% { transform: translateX(-4px); }
+}
+@keyframes glitch-bottom {
+  0%   { transform: translateX(4px);  }
+  50%  { transform: translateX(-4px); }
+  100% { transform: translateX(4px);  }
+}
+
+/* ── Hero fade-up stagger ────────────────────────────────────────────────── */
+.animate-fade-up-0 { animation: fadeUp 0.9s ease both; }
+.animate-fade-up-1 { animation: fadeUp 0.9s 0.15s ease both; }
+.animate-fade-up-2 { animation: fadeUp 0.9s 0.30s ease both; }
+.animate-fade-up-3 { animation: fadeUp 0.9s 0.45s ease both; }
+.animate-fade-up-4 { animation: fadeUp 0.9s 0.60s ease both; }
+
+/* ── Typing cursor (hero headline) ──────────────────────────────────────── */
+.typing-cursor {
+  color: var(--accent);
+  font-style: normal;
+  font-weight: 400;
+  margin-left: 0.03em;
+  animation: cursor-blink 0.7s ease-in-out infinite;
+  display: inline;
+  vertical-align: baseline;
+}
+
+/* ── Bento grid responsive override ─────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .bento-large {
+    grid-column: auto;
+    grid-row: auto;
+  }
 }

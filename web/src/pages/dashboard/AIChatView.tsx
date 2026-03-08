@@ -3,33 +3,29 @@ import { Send, Bot, User } from 'lucide-react';
 import api from '../../lib/api';
 
 interface ChatMessage {
-  id: string; // generated locally for key
+  id: string;
   role: 'USER' | 'AI';
   content: string;
 }
 
 const AIChatView: React.FC = () => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState('');
+  const [messages,  setMessages]  = useState<ChatMessage[]>([]);
+  const [input,     setInput]     = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Load history
     const fetchHistory = async () => {
       try {
         const res = await api.get('/chat/history');
         if (res.data?.data && Array.isArray(res.data.data)) {
-          // Backend returns List<ChatHistoryResponse>:
-          // [{ conversationId, title, updatedAt, messages: [{ role, content, createdAt }] }]
-          // Flatten all conversations' messages into a single list
           type RawMsg = { role?: string; content?: string; message?: string };
           type RawConversation = { messages?: RawMsg[] };
           const history: ChatMessage[] = res.data.data.flatMap((conversation: RawConversation, ci: number) =>
             (conversation.messages || []).map((msg: RawMsg, mi: number) => ({
               id: `hist-${ci}-${mi}`,
               role: (msg.role || 'AI').toUpperCase() as 'USER' | 'AI',
-              content: msg.content || msg.message || ''
+              content: msg.content || msg.message || '',
             }))
           );
           setMessages(history);
@@ -60,48 +56,78 @@ const AIChatView: React.FC = () => {
       const response = await api.post('/chat/ask', { message: userMessage });
       if (response.data?.data) {
         const aiResponse = response.data.data;
-        setMessages(prev => [...prev, { 
-          id: Date.now().toString() + 'ai', 
-          role: aiResponse.role || 'AI', 
-          content: aiResponse.message 
+        setMessages(prev => [...prev, {
+          id: Date.now().toString() + 'ai',
+          role: aiResponse.role || 'AI',
+          content: aiResponse.message,
         }]);
       }
     } catch (err) {
       console.error('Chat error:', err);
-      setMessages(prev => [...prev, { id: Date.now().toString() + 'err', role: 'AI', content: 'Connection to Intelligence Engine failed. Please try again.' }]);
+      setMessages(prev => [...prev, {
+        id: Date.now().toString() + 'err',
+        role: 'AI',
+        content: 'Connection failed. Please try again.',
+      }]);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] animate-[fadeIn_0.5s_ease-out]">
-      <div className="mb-6 shrink-0">
-        <h2 className="font-serif italic text-3xl text-cream mb-2">Intelligence Interface</h2>
-        <p className="font-outfit text-cream/50">General wellness & protocol inquiries.</p>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 140px)' }}>
+      {/* Header */}
+      <div style={{ marginBottom: '1.5rem', flexShrink: 0 }}>
+        <p className="ck-label" style={{ marginBottom: '0.5rem' }}>Intelligence Interface</p>
+        <h2 style={{
+          fontFamily: '"Outfit", sans-serif', fontWeight: 800,
+          fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'var(--ink)', lineHeight: 1.05, marginBottom: '0.4rem',
+        }}>
+          AI Coach Chat
+        </h2>
+        <p style={{ color: 'var(--muted)', fontWeight: 300, fontSize: '0.875rem' }}>
+          General wellness &amp; protocol inquiries.
+        </p>
       </div>
 
-      <div className="flex-1 bg-[#111] rounded-[2rem] border border-cream/5 flex flex-col overflow-hidden relative">
-        
-        {/* Chat History */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
+      {/* Chat area */}
+      <div style={{ flex: 1, background: 'var(--surface)', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '2px solid var(--brutal)' }}>
+
+        {/* Messages */}
+        <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {messages.length === 0 && !isLoading && (
-             <div className="h-full flex items-center justify-center text-cream/30 font-outfit italic">
-               Waiting for input...
-             </div>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontWeight: 300, fontStyle: 'italic' }}>
+              Ask me anything about yoga and wellness…
+            </div>
           )}
-          
-          {messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.role === 'USER' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`flex gap-4 max-w-[85%] ${msg.role === 'USER' ? 'flex-row-reverse' : 'flex-row'}`}>
-                <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center ${msg.role === 'USER' ? 'bg-cream/10 text-cream' : 'bg-moss text-clay'}`}>
-                  {msg.role === 'USER' ? <User size={18} /> : <Bot size={18} />}
+
+          {messages.map(msg => (
+            <div
+              key={msg.id}
+              style={{ display: 'flex', justifyContent: msg.role === 'USER' ? 'flex-end' : 'flex-start' }}
+            >
+              <div style={{ display: 'flex', gap: '0.75rem', maxWidth: '80%', flexDirection: msg.role === 'USER' ? 'row-reverse' : 'row' }}>
+                {/* Avatar */}
+                <div style={{
+                  width: '32px', height: '32px', flexShrink: 0,
+                  background: msg.role === 'USER' ? 'var(--brutal)' : 'var(--accent)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: 'var(--bg)',
+                }}>
+                  {msg.role === 'USER' ? <User size={14} /> : <Bot size={14} />}
                 </div>
-                <div className={`px-5 py-4 rounded-2xl font-outfit leading-relaxed ${
-                  msg.role === 'USER' 
-                    ? 'bg-clay text-cream rounded-tr-sm' 
-                    : 'bg-[#1A1A1A] text-cream/90 border border-cream/5 rounded-tl-sm'
-                }`}>
+                {/* Bubble — hard shadow */}
+                <div style={{
+                  padding: '0.875rem 1.125rem',
+                  background: msg.role === 'USER' ? 'var(--brutal)' : 'var(--bg)',
+                  color:      msg.role === 'USER' ? 'var(--bg)'     : 'var(--ink)',
+                  fontWeight: 300, fontSize: '0.875rem', lineHeight: 1.6,
+                  border: '2px solid var(--brutal)',
+                  boxShadow: msg.role === 'USER'
+                    ? '4px 4px 0 0 rgba(210,232,35,0.5)'
+                    : '4px 4px 0 0 var(--brutal)',
+                  borderLeft: msg.role === 'AI' ? '3px solid var(--accent)' : '2px solid var(--brutal)',
+                }}>
                   {msg.content}
                 </div>
               </div>
@@ -109,41 +135,52 @@ const AIChatView: React.FC = () => {
           ))}
 
           {isLoading && (
-            <div className="flex justify-start">
-              <div className="flex gap-4 max-w-[85%]">
-                <div className="w-10 h-10 shrink-0 rounded-full bg-moss text-clay flex items-center justify-center">
-                  <Bot size={18} />
-                </div>
-                <div className="px-5 py-4 rounded-2xl bg-[#1A1A1A] border border-cream/5 rounded-tl-sm text-cream/50 font-mono tracking-widest text-xs flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-clay rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="w-1.5 h-1.5 bg-clay rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="w-1.5 h-1.5 bg-clay rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                </div>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+              <div style={{ width: 32, height: 32, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bg)', flexShrink: 0 }}>
+                <Bot size={14} />
+              </div>
+              <div style={{
+                padding: '0.875rem 1.125rem', background: 'var(--bg)',
+                border: '2px solid var(--brutal)', boxShadow: '4px 4px 0 0 var(--brutal)',
+                display: 'flex', gap: '0.4rem', alignItems: 'center',
+              }}>
+                {[0, 1, 2].map(d => (
+                  <div
+                    key={d}
+                    style={{
+                      width: 6, height: 6,
+                      background: 'var(--accent)',
+                      animation: `bounce 0.9s ${d * 0.15}s infinite`,
+                    }}
+                    className="animate-bounce"
+                  />
+                ))}
               </div>
             </div>
           )}
         </div>
 
-        {/* Input Area */}
-        <div className="shrink-0 p-4 bg-[#111] border-t border-cream/5">
-          <form onSubmit={handleSend} className="relative flex items-center">
-            <input 
+        {/* Input */}
+        <div style={{ flexShrink: 0, padding: '1rem 1.5rem', borderTop: '2px solid var(--brutal)' }}>
+          <form onSubmit={handleSend} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <input
               type="text"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask the intelligence model..."
-              className="w-full bg-[#1A1A1A] border border-cream/10 rounded-full px-6 py-4 pr-14 text-cream font-outfit focus:outline-none focus:border-clay/50 transition-colors placeholder:text-cream/30"
+              onChange={e => setInput(e.target.value)}
+              placeholder="Ask the intelligence model…"
+              className="ck-input"
+              style={{ flex: 1, marginBottom: 0 }}
             />
-            <button 
+            <button
               type="submit"
               disabled={isLoading || !input.trim()}
-              className="absolute right-2 w-10 h-10 flex items-center justify-center rounded-full bg-clay text-cream hover:bg-[#a64627] disabled:opacity-50 disabled:hover:bg-clay transition-all"
+              className="btn-brutalist"
+              style={{ padding: '0.625rem 1rem', opacity: (isLoading || !input.trim()) ? 0.4 : 1, flexShrink: 0 }}
             >
-              <Send size={16} className="-ml-0.5" />
+              <Send size={15} />
             </button>
           </form>
         </div>
-
       </div>
     </div>
   );

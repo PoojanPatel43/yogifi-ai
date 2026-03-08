@@ -42,7 +42,7 @@ export async function initializePoseDetector(): Promise<void> {
     const detectorConfig: poseDetection.MoveNetModelConfig = {
       modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
       enableSmoothing: true,
-      minPoseScore: 0.25,
+      minPoseScore: 0.30, // raised from 0.25 — reduces ghost detections; yoga needs precise keypoints
     };
 
     detector = await poseDetection.createDetector(model, detectorConfig);

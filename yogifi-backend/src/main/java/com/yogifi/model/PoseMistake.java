@@ -44,6 +44,12 @@ public class PoseMistake {
     @Column(name = "duration_seconds")
     private Double durationSeconds; // how long the mistake persisted
 
+    @Column(name = "current_angle")
+    private Double currentAngle; // measured joint angle in degrees
+
+    @Column(name = "target_angle")
+    private Double targetAngle; // target joint angle for correct pose
+
     public enum Severity {
         LOW,
         MEDIUM,

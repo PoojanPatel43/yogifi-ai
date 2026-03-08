@@ -1,89 +1,36 @@
-import { useRef } from 'react';
-import gsap from 'gsap';
-import { useGSAP } from '@gsap/react';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
-gsap.registerPlugin(ScrollTrigger);
-
-const Philosophy = () => {
-  const sectionRef = useRef<HTMLElement>(null);
-
-  const bigText = 'We focus on: understanding your body like a living instrument.';
-  const words    = bigText.split(' ');
-
-  useGSAP(() => {
-    gsap.from('.phil-word', {
-      scrollTrigger: { trigger: '.philosophy-big', start: 'top 85%' },
-      y: 30,
-      opacity: 0,
-      stagger: 0.07,
-      ease: 'power2.out',
-      duration: 0.9,
-    });
-    gsap.from('.phil-small', {
-      scrollTrigger: { trigger: sectionRef.current, start: 'top 80%' },
-      y: 20,
-      opacity: 0,
-      duration: 1,
-    });
-  }, { scope: sectionRef });
-
-  return (
-    <section
-      ref={sectionRef}
-      id="philosophy"
-      className="relative w-full bg-charcoal py-32 md:py-48 px-6 md:px-12 lg:px-20
-        overflow-hidden text-center flex flex-col items-center justify-center min-h-[80vh]"
-    >
-      {/* Background parallax yoga image */}
-      <div
-        className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
-        style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?w=1800&q=85&auto=format&fit=crop')",
-          backgroundAttachment: 'fixed',
-          opacity: 0.06,
-        }}
-      />
-
-      {/* Subtle gold radial glow */}
-      <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none">
-        <div className="w-[600px] h-[600px] bg-gold/5 blur-[160px] rounded-full" />
+const Philosophy = () => (
+  <section style={{ backgroundColor: 'var(--ink)', color: 'var(--bg)', padding: '8rem 2rem', textAlign: 'center' }}>
+    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+      <p className="ck-label mb-8" style={{ color: 'var(--muted)' }}>Our philosophy</p>
+      <h2 style={{ fontFamily: '"Playfair Display", serif', fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(2.5rem, 6vw, 6rem)', letterSpacing: '-0.03em', lineHeight: 0.9, marginBottom: '2.5rem' }}>
+        Yoga is a{' '}
+        <em style={{ color: 'var(--accent)' }}>practice,</em>
+        <br />
+        not a performance.
+      </h2>
+      <p style={{ color: 'rgba(247,244,238,0.55)', fontSize: '1.1rem', fontWeight: 300, lineHeight: 1.8, maxWidth: '520px', margin: '0 auto 3.5rem' }}>
+        Technology should disappear into the background and let the practice speak.
+        Yogifi gives you real feedback without judgment — so you can focus on breath,
+        alignment, and presence.
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '3rem', borderTop: '1px solid rgba(212,207,198,0.15)', paddingTop: '3.5rem' }} className="max-sm:grid-cols-1">
+        {[
+          { heading: 'Private by design', body: 'Your camera feed never leaves your device. No cloud AI, no data collection, no surveillance.' },
+          { heading: 'Science-backed', body: 'Biomechanical angle rules calibrated against certified yoga teacher guidelines and sports science research.' },
+          { heading: 'Always improving', body: 'The model learns from aggregate (anonymised) feedback to score poses more accurately over time.' },
+        ].map(item => (
+          <div key={item.heading} style={{ textAlign: 'left' }}>
+            <h3 style={{ fontFamily: '"Playfair Display", serif', fontStyle: 'italic', fontSize: '1.15rem', letterSpacing: '-0.01em', color: 'var(--bg)', marginBottom: '0.75rem' }}>
+              {item.heading}
+            </h3>
+            <p style={{ color: 'rgba(247,244,238,0.45)', fontSize: '0.9rem', fontWeight: 300, lineHeight: 1.7 }}>
+              {item.body}
+            </p>
+          </div>
+        ))}
       </div>
-
-      <div className="relative z-10 w-full max-w-4xl mx-auto flex flex-col items-center text-center">
-
-        {/* Contrast quote */}
-        <p className="phil-small font-outfit font-light text-warmwhite/40 text-[clamp(0.95rem,2vw,1.2rem)] leading-relaxed max-w-2xl mb-10">
-          "Most wellness apps focus on: generic video libraries,&nbsp;
-          <br className="hidden md:block" />
-          one-size-fits-all routines, and passive consumption."
-        </p>
-
-        {/* Divider line */}
-        <div className="phil-small w-14 h-px bg-gold/40 mb-10 mx-auto" />
-
-        {/* Big serif statement */}
-        <div className="philosophy-big font-serif italic font-light text-[clamp(2.5rem,6vw,6rem)] leading-[1.1] text-warmwhite w-full">
-          {words.map((word, i) => {
-            const isAccent = word.includes('understanding') || word.includes('instrument');
-            return (
-              <span
-                key={i}
-                className={`phil-word inline-block mr-[0.28em] ${isAccent ? 'text-gold' : ''}`}
-              >
-                {word}
-              </span>
-            );
-          })}
-        </div>
-
-        {/* Attribution */}
-        <p className="phil-small font-mono text-xs tracking-widest text-warmwhite/20 mt-10 uppercase">
-          The Yogifi Philosophy
-        </p>
-      </div>
-    </section>
-  );
-};
+    </div>
+  </section>
+);
 
 export default Philosophy;

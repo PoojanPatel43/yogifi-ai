@@ -1,164 +1,264 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import gsap from 'gsap';
-import { useGSAP } from '@gsap/react';
-import { hasAccessToken } from '../lib/api';
-import { Star, Users, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import Ribbons from './Ribbons';
+
+// ── Typing constants ──────────────────────────────────────────────────────────
+const HEADLINE        = 'Move Smarter.';
+const TOTAL_CHARS     = HEADLINE.length;  // 13
+const MOVE_END        = 4;               // "Move"  → indices 0-3
+const SMARTER_START   = 5;               // "Smarter" starts after the space
+const SMARTER_END     = 12;             // "Smarter" ends at index 12 (exclusive)
+const SMARTER_LENGTH  = SMARTER_END - SMARTER_START; // 7
+
+// ── SVG path (wobbly hand-drawn underline in 250-unit viewport) ───────────────
+const UNDERLINE_PATH  = 'M 2 5 C 25 1, 58 8, 88 4 C 118 1, 148 7, 178 4 C 202 1, 228 6, 248 4';
 
 const Hero = () => {
-  const container = useRef<HTMLDivElement>(null);
-  const [isLoggedIn] = useState(() => hasAccessToken());
+  const [charCount,    setCharCount]    = useState(0);
+  const [sectionInView, setSectionInView] = useState(false);
 
-  useGSAP(() => {
-    gsap.from('.hero-elem', {
-      y: 48,
-      opacity: 0,
-      stagger: 0.13,
-      ease: 'power3.out',
-      duration: 1.3,
-      delay: 0.2,
-    });
-    gsap.to('.hero-badge', {
-      y: -8,
-      duration: 3.5,
-      ease: 'sine.inOut',
-      repeat: -1,
-      yoyo: true,
-    });
-    gsap.to('.scroll-line', {
-      scaleY: 0,
-      transformOrigin: 'bottom',
-      ease: 'power2.inOut',
-      duration: 1.6,
-      repeat: -1,
-      yoyo: true,
-    });
-  }, { scope: container });
+  const sectionRef = useRef<HTMLElement>(null);
+  const pathRef    = useRef<SVGPathElement>(null);
+
+  // ── 1. Typing animation — 50 ms/char, starts after 300 ms ────────────────
+  useEffect(() => {
+    let intervalId: ReturnType<typeof setInterval>;
+    const timeoutId = setTimeout(() => {
+      intervalId = setInterval(() => {
+        setCharCount(n => {
+          if (n >= TOTAL_CHARS) { clearInterval(intervalId); return n; }
+          return n + 1;
+        });
+      }, 50);
+    }, 300);
+    return () => { clearTimeout(timeoutId); clearInterval(intervalId); };
+  }, []);
+
+  // ── 2. IntersectionObserver — watch hero section ──────────────────────────
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setSectionInView(true); io.disconnect(); } },
+      { threshold: 0.2 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  // ── 3. Draw SVG underline once typing is done AND section is in view ──────
+  useEffect(() => {
+    const path = pathRef.current;
+    if (!path || charCount < TOTAL_CHARS || !sectionInView) return;
+
+    const len = path.getTotalLength();
+    path.style.strokeDasharray  = `${len}`;
+    path.style.strokeDashoffset = `${len}`;
+    // Double-RAF: first frame sets the initial dashoffset in the browser,
+    // second frame triggers the CSS transition so it's guaranteed to animate.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        path.style.transition      = 'stroke-dashoffset 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        path.style.strokeDashoffset = '0';
+      }),
+    );
+  }, [charCount, sectionInView]);
+
+  // ── Derived display values ────────────────────────────────────────────────
+  const movePart       = HEADLINE.slice(0, Math.min(charCount, MOVE_END));
+  const showLine2      = charCount > SMARTER_START;            // first "S" typed
+  const smarterPart    = showLine2
+    ? HEADLINE.slice(SMARTER_START, Math.min(charCount, SMARTER_END))
+    : '';
+  const dotPart        = charCount >= TOTAL_CHARS ? '.' : '';
+  const isTypingDone   = charCount >= TOTAL_CHARS;
+  const showUnderline  = smarterPart.length === SMARTER_LENGTH;
 
   return (
     <section
-      ref={container}
-      className="relative w-full h-[100dvh] flex items-end p-8 md:p-12 lg:p-20 overflow-hidden bg-forest-dark"
-      id="hero"
+      ref={sectionRef}
+      style={{ maxWidth: '1200px', margin: '0 auto', padding: 'calc(5rem + 56px) 2rem 4rem', position: 'relative' }}
     >
-      {/* Background yoga image */}
+      {/* ── Ribbons WebGL background — z-index 0, opacity 0.35 ─────────────── */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        zIndex: 0, opacity: 0.35,
+        pointerEvents: 'none', overflow: 'hidden',
+      }}>
+        <Ribbons
+          colors={['#C9472F', '#D4CFC6', '#1A1816']}
+          baseThickness={25}
+          speedMultiplier={0.4}
+          maxAge={500}
+          enableFade={true}
+          enableShaderEffect={true}
+          effectAmplitude={1.2}
+          backgroundColor={[0.969, 0.957, 0.933, 0]}
+        />
+      </div>
+
+      {/* ── Hero content — z-index 10, always above ribbons ────────────────── */}
+      <div style={{ position: 'relative', zIndex: 10 }}>
       <div
-        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1575052814086-f385e2e2ad1b?w=1800&q=85&auto=format&fit=crop')" }}
-      />
+        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', alignItems: 'end', gap: '4rem' }}
+        className="max-lg:grid-cols-1 max-lg:gap-8"
+      >
+        {/* Left — giant italic heading with typing + SVG underline */}
+        <div style={{ position: 'relative' }}>
 
-      {/* Forest green gradient overlay */}
-      <div
-        className="absolute inset-0 z-10"
-        style={{ background: 'linear-gradient(to top, rgba(15,36,25,0.97) 0%, rgba(27,67,50,0.55) 50%, rgba(13,26,18,0.3) 100%)' }}
-      />
-
-      {/* Gold glow accent */}
-      <div className="absolute bottom-0 left-0 w-[600px] h-[400px] bg-gold/8 blur-[120px] rounded-full pointer-events-none z-10" />
-
-      {/* Main content */}
-      <div className="relative z-20 w-full max-w-7xl mx-auto flex justify-between items-end">
-        <div className="flex flex-col items-start max-w-3xl">
-
-          {/* Eyebrow */}
-          <div className="hero-elem section-label mb-7 !text-gold !bg-gold/15">
-            Yogifi AI — Intelligent Wellness
+          {/* ── Acid sticker badge — floats top-right of the heading column ── */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              top: '0.25rem',
+              right: '-0.5rem',
+              background: 'var(--acid)',
+              border: '2px solid var(--brutal)',
+              boxShadow: '4px 4px 0 0 var(--brutal)',
+              transform: 'rotate(-2deg)',
+              padding: '0.4rem 0.9rem',
+              zIndex: 15,
+              pointerEvents: 'none',
+            }}
+          >
+            <span style={{
+              fontFamily: '"Space Grotesk", sans-serif',
+              fontWeight: 700,
+              fontSize: '0.68rem',
+              letterSpacing: '0.07em',
+              textTransform: 'uppercase',
+              color: 'var(--brutal)',
+              whiteSpace: 'nowrap',
+            }}>
+              AI-Powered ✦
+            </span>
           </div>
-
-          {/* Headline */}
-          <h1 className="hero-elem font-sans font-bold text-warmwhite leading-none tracking-tight text-[clamp(2.8rem,6.5vw,5.5rem)] mb-2">
-            Your practice,
-          </h1>
-          <h2 className="hero-elem font-serif italic font-light text-gold leading-[0.88] text-[clamp(4rem,11vw,9rem)] mb-8 md:mb-10 -ml-1">
-            perfected.
-          </h2>
-
-          {/* Sub */}
-          <p className="hero-elem font-outfit font-light text-warmwhite/70 text-lg md:text-xl max-w-[520px] leading-relaxed mb-10 md:mb-12">
-            Real-time AI coaching powered by computer vision. Every session,
-            your form is understood and guided at 30&nbsp;fps — no instructor needed.
+          <p className="ck-label mb-6 animate-fade-up-0" style={{ color: 'var(--accent)' }}>
+            AI Yoga Coach — Beta
           </p>
 
-          {/* CTAs */}
-          <div className="hero-elem flex flex-col sm:flex-row items-center gap-5 w-full sm:w-auto mb-10">
-            {isLoggedIn ? (
-              <Link to="/dashboard" className="btn-primary text-base md:text-lg w-full sm:w-auto">
-                <span>Open Dashboard</span>
-                <ArrowRight size={18} />
-              </Link>
-            ) : (
-              <a href="#pricing" className="btn-primary text-base md:text-lg w-full sm:w-auto">
-                <span>Start Free — Join Waitlist</span>
-                <ArrowRight size={18} />
-              </a>
+          <h1
+            className="animate-fade-up-1"
+            style={{
+              fontFamily: '"Playfair Display", serif',
+              fontStyle: 'italic',
+              fontWeight: 700,
+              fontSize: 'clamp(4rem, 10vw, 9rem)',
+              letterSpacing: '-0.03em',
+              lineHeight: 0.9,
+              color: 'var(--ink)',
+              // Reserve space for two lines so layout doesn't shift during typing
+              minHeight: 'clamp(7.2rem, 18vw, 16.2rem)',
+            }}
+          >
+            {/* Line 1 — "Move" */}
+            {movePart}
+
+            {/* Line 2 — "Smarter" (accent) + "." (ink) */}
+            {showLine2 && (
+              <>
+                <br />
+                {/* Wrapper span: position:relative anchor for the SVG underline */}
+                <span style={{ position: 'relative', display: 'inline-block' }}>
+                  <span style={{ color: 'var(--accent)' }}>{smarterPart}</span>
+
+                  {/* Hand-drawn SVG underline — revealed via stroke-dashoffset */}
+                  {showUnderline && (
+                    <svg
+                      aria-hidden="true"
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        bottom: '-0.14em',   // sits just below the text baseline
+                        width: '100%',
+                        height: '8px',
+                        overflow: 'visible', // path extends slightly beyond the box
+                        pointerEvents: 'none',
+                        display: 'block',
+                      }}
+                      viewBox="0 0 250 8"
+                      preserveAspectRatio="none"
+                    >
+                      <path
+                        ref={pathRef}
+                        d={UNDERLINE_PATH}
+                        fill="none"
+                        stroke="var(--accent)"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        // Start fully hidden; the effect will animate to 0
+                        style={{ strokeDasharray: '1000', strokeDashoffset: '1000' }}
+                      />
+                    </svg>
+                  )}
+                </span>
+              </>
             )}
-            <a href="#features" className="btn-ghost text-sm md:text-base !px-6 !py-3 w-full sm:w-auto justify-center">
+
+            {/* Dot on line 2 (ink color, outside accent span) */}
+            {dotPart}
+
+            {/* Blinking cursor — visible while typing, gone when done */}
+            {!isTypingDone && <span className="typing-cursor">|</span>}
+          </h1>
+        </div>
+
+        {/* Right — copy + CTA */}
+        <div className="animate-fade-up-2">
+          <p style={{
+            color: 'var(--muted)', fontWeight: 300, fontSize: '1.1rem',
+            lineHeight: 1.75, marginBottom: '2.5rem', maxWidth: '380px',
+          }}>
+            Real-time pose detection meets AI coaching. Get instant form feedback,
+            personalised sessions, and track your yoga progress — all from your browser.
+          </p>
+          <div className="flex flex-wrap items-center gap-4">
+            <Link to="/signup" className="btn-ink">
+              Start practicing <ArrowRight size={14} />
+            </Link>
+            <Link
+              to="/#how-it-works"
+              style={{
+                fontFamily: '"DM Sans", sans-serif', fontSize: '0.8rem', letterSpacing: '0.1em',
+                textTransform: 'uppercase', color: 'var(--muted)',
+                textDecoration: 'underline', textUnderlineOffset: '4px',
+                textDecorationColor: 'var(--line)', transition: 'text-decoration-color 0.2s',
+              }}
+              onMouseEnter={e => ((e.currentTarget as HTMLElement).style.textDecorationColor = 'var(--accent)')}
+              onMouseLeave={e => ((e.currentTarget as HTMLElement).style.textDecorationColor = 'var(--line)')}
+            >
               See how it works
-            </a>
+            </Link>
           </div>
-
-          {/* Social proof row */}
-          <div className="hero-elem flex flex-wrap items-center gap-5">
-            <div className="flex items-center gap-3">
-              <div className="flex -space-x-2">
-                {['🧘', '🏃', '💪', '🌿'].map((emoji, i) => (
-                  <div key={i} className="w-8 h-8 rounded-full bg-forest-light border-2 border-forest-dark flex items-center justify-center text-xs">
-                    {emoji}
-                  </div>
-                ))}
-              </div>
-              <div className="flex flex-col">
-                <span className="text-warmwhite font-bold text-sm leading-none">2,400+</span>
-                <span className="text-warmwhite/50 text-xs font-mono mt-0.5">practitioners</span>
-              </div>
-            </div>
-            <div className="w-px h-8 bg-warmwhite/10" />
-            <div className="flex items-center gap-2">
-              <div className="flex gap-0.5">
-                {[1,2,3,4,5].map(i => <Star key={i} size={13} className="fill-gold text-gold" />)}
-              </div>
-              <span className="text-warmwhite/60 text-xs font-mono">4.9 / 5.0</span>
-            </div>
-            <div className="w-px h-8 bg-warmwhite/10" />
-            <div className="flex items-center gap-2">
-              <Users size={14} className="text-sage" />
-              <span className="text-warmwhite/60 text-xs font-mono">BETA · Limited access</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Floating stat cards — desktop */}
-        <div className="hero-badge hidden lg:flex flex-col gap-4 mb-6">
-          <div className="bg-warmwhite/8 backdrop-blur-md border border-warmwhite/10 rounded-2xl p-5 flex flex-col gap-3 min-w-[190px]">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-sage animate-pulse" />
-              <span className="font-mono text-[10px] text-warmwhite/50 tracking-widest">LIVE SESSION</span>
-            </div>
-            <div>
-              <p className="text-warmwhite font-bold text-2xl leading-none">94.2%</p>
-              <p className="text-warmwhite/50 text-xs font-outfit mt-1">Warrior II accuracy</p>
-            </div>
-            <div className="w-full h-1 bg-warmwhite/10 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-sage to-gold rounded-full" style={{ width: '94.2%' }} />
-            </div>
-          </div>
-          <div className="bg-warmwhite/8 backdrop-blur-md border border-warmwhite/10 rounded-2xl p-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-gold/15 flex items-center justify-center text-base">🔥</div>
-            <div>
-              <p className="text-warmwhite font-bold text-sm leading-none">21-day streak</p>
-              <p className="text-warmwhite/40 text-xs font-outfit mt-0.5">Keep it going!</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Scroll hint */}
-        <div className="hidden lg:flex flex-col items-center gap-4 absolute bottom-0 right-4 z-20">
-          <div className="w-px h-20 bg-warmwhite/8 overflow-hidden relative">
-            <div className="scroll-line absolute top-0 left-0 w-full h-full bg-gold origin-bottom" />
-          </div>
-          <p className="font-mono text-warmwhite/30 tracking-widest text-[9px]" style={{ writingMode: 'vertical-rl' }}>SCROLL</p>
         </div>
       </div>
+
+      <div style={{ borderTop: '1px solid var(--line)', marginTop: '4rem' }} className="animate-fade-up-3" />
+
+      {/* Stats row */}
+      <div
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2rem', marginTop: '2.5rem' }}
+        className="animate-fade-up-3 max-sm:grid-cols-1"
+      >
+        {[
+          { value: '94.2%',   label: 'Avg form accuracy' },
+          { value: '< 500ms', label: 'AI feedback latency' },
+          { value: '3 poses', label: 'Tracked in real-time' },
+        ].map(stat => (
+          <div key={stat.label}>
+            <p style={{
+              fontFamily: '"Playfair Display", serif', fontStyle: 'italic', fontWeight: 700,
+              fontSize: '2.5rem', letterSpacing: '-0.03em', lineHeight: 1, color: 'var(--ink)',
+            }}>
+              {stat.value}
+            </p>
+            <p className="ck-label mt-1">{stat.label}</p>
+          </div>
+        ))}
+      </div>
+      </div>{/* end z-index:10 content wrapper */}
     </section>
   );
 };

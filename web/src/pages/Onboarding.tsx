@@ -1,106 +1,89 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Camera, Check, ChevronRight, Leaf } from 'lucide-react';
+import { ArrowRight, Camera, Check } from 'lucide-react';
+import BrutalistCursor from '../components/BrutalistCursor';
 
 type Level = 'beginner' | 'intermediate' | 'advanced';
 type Goal  = 'flexibility' | 'strength' | 'mindfulness' | 'weight';
 
 const TOTAL_STEPS = 4;
 
-const ProgressBar = ({ step }: { step: number }) => (
-  <div className="flex items-center gap-2">
-    {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-      <div
-        key={i}
-        className={`h-1 rounded-full transition-all duration-500 ${
-          i < step ? 'bg-gold' : i === step - 1 ? 'bg-gold' : 'bg-forest/15 dark:bg-warmwhite/10'
-        } ${i === step - 1 ? 'flex-[2]' : 'flex-1'}`}
-      />
-    ))}
+/* ── Acid pill step indicator ─────────────────────────────────────────── */
+const StepPills = ({ step }: { step: number }) => (
+  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+    {Array.from({ length: TOTAL_STEPS }).map((_, i) => {
+      const done    = i < step - 1;
+      const current = i === step - 1;
+      return (
+        <div
+          key={i}
+          style={{
+            height: '28px',
+            width:  current ? '56px' : '28px',
+            background:  done || current ? 'var(--acid)' : 'var(--bg)',
+            border:      '2px solid var(--brutal)',
+            boxShadow:   done || current ? '3px 3px 0 0 var(--brutal)' : 'none',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all 0.3s ease',
+            flexShrink: 0,
+          }}
+        >
+          {done && <Check size={12} style={{ color: 'var(--brutal)', strokeWidth: 3 }} />}
+          {current && (
+            <span style={{ fontFamily: '"Space Grotesk", sans-serif', fontWeight: 700, fontSize: '0.6rem', letterSpacing: '0.06em', color: 'var(--brutal)' }}>
+              {step}/{TOTAL_STEPS}
+            </span>
+          )}
+        </div>
+      );
+    })}
   </div>
 );
 
 /* ── Step 1 — Level ─────────────────────────────────────────────────── */
 const StepLevel = ({ value, onChange }: { value: Level | null; onChange: (v: Level) => void }) => {
-  const levels: { id: Level; label: string; emoji: string; desc: string }[] = [
-    { id: 'beginner',     label: 'Beginner',     emoji: '🌱', desc: 'New to yoga, starting fresh'      },
-    { id: 'intermediate', label: 'Intermediate', emoji: '🌿', desc: '1–3 years of regular practice'    },
-    { id: 'advanced',     label: 'Advanced',     emoji: '🌳', desc: '3+ years, complex poses mastered' },
+  const levels: { id: Level; label: string; desc: string }[] = [
+    { id: 'beginner',     label: 'Beginner',     desc: 'New to yoga, starting fresh'      },
+    { id: 'intermediate', label: 'Intermediate', desc: '1–3 years of regular practice'    },
+    { id: 'advanced',     label: 'Advanced',     desc: '3+ years, complex poses mastered' },
   ];
 
   return (
-    <div className="flex flex-col gap-4">
-      <h2 className="font-serif italic text-[clamp(2rem,4vw,3rem)] text-forest dark:text-warmwhite leading-tight mb-2">
+    <div>
+      <h2 style={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800, fontSize: 'clamp(1.75rem, 4vw, 2.75rem)', color: 'var(--ink)', lineHeight: 1.05, marginBottom: '0.75rem' }}>
         What's your yoga level?
       </h2>
-      <p className="font-outfit text-charcoal/55 dark:text-warmwhite/45 mb-6">
+      <p style={{ color: 'var(--muted)', fontWeight: 300, marginBottom: '2rem' }}>
         We'll personalise your sessions and difficulty accordingly.
       </p>
-      {levels.map(l => (
-        <button
-          key={l.id}
-          onClick={() => onChange(l.id)}
-          className={`flex items-center gap-5 p-5 rounded-2xl border-2 text-left transition-all duration-200
-            ${value === l.id
-              ? 'border-gold bg-gold/8 dark:bg-gold/6'
-              : 'border-charcoal/10 dark:border-warmwhite/10 hover:border-forest/30 dark:hover:border-warmwhite/25'
-            }`}
-        >
-          <span className="text-2xl">{l.emoji}</span>
-          <div className="flex-1">
-            <p className="font-sans font-bold text-charcoal dark:text-warmwhite">{l.label}</p>
-            <p className="font-outfit text-sm text-charcoal/50 dark:text-warmwhite/40">{l.desc}</p>
-          </div>
-          {value === l.id && <Check size={18} className="text-gold shrink-0" />}
-        </button>
-      ))}
-    </div>
-  );
-};
-
-/* ── Step 2 — Goals ─────────────────────────────────────────────────── */
-const StepGoals = ({ value, onChange }: { value: Goal[]; onChange: (v: Goal[]) => void }) => {
-  const goals: { id: Goal; label: string; emoji: string; desc: string }[] = [
-    { id: 'flexibility', label: 'Flexibility',  emoji: '🤸', desc: 'Improve range of motion & mobility' },
-    { id: 'strength',    label: 'Strength',     emoji: '💪', desc: 'Build muscle and body stability'    },
-    { id: 'mindfulness', label: 'Mindfulness',  emoji: '🧘', desc: 'Reduce stress, improve focus'       },
-    { id: 'weight',      label: 'Weight Loss',  emoji: '🔥', desc: 'Burn calories, tone body'           },
-  ];
-
-  const toggle = (id: Goal) => {
-    onChange(value.includes(id) ? value.filter(v => v !== id) : [...value, id]);
-  };
-
-  return (
-    <div className="flex flex-col gap-4">
-      <h2 className="font-serif italic text-[clamp(2rem,4vw,3rem)] text-forest dark:text-warmwhite leading-tight mb-2">
-        What are your goals?
-      </h2>
-      <p className="font-outfit text-charcoal/55 dark:text-warmwhite/45 mb-6">
-        Select all that apply — we'll build a plan around them.
-      </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {goals.map(g => {
-          const active = value.includes(g.id);
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        {levels.map(l => {
+          const active = value === l.id;
           return (
             <button
-              key={g.id}
-              onClick={() => toggle(g.id)}
-              className={`flex items-center gap-4 p-5 rounded-2xl border-2 text-left transition-all duration-200
-                ${active
-                  ? 'border-gold bg-gold/8 dark:bg-gold/6'
-                  : 'border-charcoal/10 dark:border-warmwhite/10 hover:border-forest/30 dark:hover:border-warmwhite/25'
-                }`}
+              key={l.id}
+              onClick={() => onChange(l.id)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '1.25rem 1.5rem',
+                background: active ? 'var(--brutal)' : 'var(--bg)',
+                color:      active ? 'var(--bg)'     : 'var(--ink)',
+                border: '2px solid var(--brutal)',
+                boxShadow: active ? 'none' : '4px 4px 0 0 var(--brutal)',
+                cursor: 'pointer', textAlign: 'left',
+                transform: active ? 'translate(4px,4px)' : 'none',
+                transition: 'all 0.15s',
+              }}
             >
-              <span className="text-xl">{g.emoji}</span>
-              <div className="flex-1">
-                <p className="font-sans font-bold text-sm text-charcoal dark:text-warmwhite">{g.label}</p>
-                <p className="font-outfit text-xs text-charcoal/45 dark:text-warmwhite/35">{g.desc}</p>
+              <div>
+                <p style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.2rem', fontFamily: '"Space Grotesk", sans-serif' }}>{l.label}</p>
+                <p style={{ fontSize: '0.8rem', color: active ? 'rgba(247,244,238,0.6)' : 'var(--muted)', fontWeight: 300 }}>{l.desc}</p>
               </div>
-              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all
-                ${active ? 'border-gold bg-gold' : 'border-charcoal/20 dark:border-warmwhite/20'}`}>
-                {active && <Check size={11} className="text-forest" />}
-              </div>
+              {active && (
+                <div style={{ background: 'var(--acid)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Check size={14} style={{ color: 'var(--brutal)', strokeWidth: 3 }} />
+                </div>
+              )}
             </button>
           );
         })}
@@ -109,78 +92,134 @@ const StepGoals = ({ value, onChange }: { value: Goal[]; onChange: (v: Goal[]) =
   );
 };
 
-/* ── Step 3 — Camera permission ─────────────────────────────────────── */
+/* ── Step 2 — Goals ─────────────────────────────────────────────────── */
+const StepGoals = ({ value, onChange }: { value: Goal[]; onChange: (v: Goal[]) => void }) => {
+  const goals: { id: Goal; label: string; desc: string; emoji: string }[] = [
+    { id: 'flexibility', label: 'Flexibility',  desc: 'Range of motion & mobility', emoji: '🧘' },
+    { id: 'strength',    label: 'Strength',     desc: 'Build muscle and stability',  emoji: '💪' },
+    { id: 'mindfulness', label: 'Mindfulness',  desc: 'Reduce stress, focus',        emoji: '🧠' },
+    { id: 'weight',      label: 'Weight Loss',  desc: 'Burn calories, tone body',    emoji: '⚡' },
+  ];
+
+  const toggle = (id: Goal) =>
+    onChange(value.includes(id) ? value.filter(v => v !== id) : [...value, id]);
+
+  return (
+    <div>
+      <h2 style={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800, fontSize: 'clamp(1.75rem, 4vw, 2.75rem)', color: 'var(--ink)', lineHeight: 1.05, marginBottom: '0.75rem' }}>
+        What are your goals?
+      </h2>
+      <p style={{ color: 'var(--muted)', fontWeight: 300, marginBottom: '2rem' }}>
+        Select all that apply — we'll build a plan around them.
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+        {goals.map(g => {
+          const active = value.includes(g.id);
+          return (
+            <button
+              key={g.id}
+              onClick={() => toggle(g.id)}
+              style={{
+                display: 'flex', flexDirection: 'column', gap: '0.5rem',
+                padding: '1.25rem', position: 'relative',
+                background: active ? 'var(--brutal)' : 'var(--bg)',
+                color:      active ? 'var(--bg)'     : 'var(--ink)',
+                border: '2px solid var(--brutal)',
+                boxShadow: active ? 'none' : '4px 4px 0 0 var(--brutal)',
+                cursor: 'pointer', textAlign: 'left',
+                transform: active ? 'translate(4px,4px)' : 'none',
+                transition: 'all 0.15s',
+              }}
+            >
+              <span style={{ fontSize: '1.5rem' }}>{g.emoji}</span>
+              <div>
+                <p style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.15rem', fontFamily: '"Space Grotesk", sans-serif' }}>{g.label}</p>
+                <p style={{ fontSize: '0.75rem', color: active ? 'rgba(247,244,238,0.55)' : 'var(--muted)', fontWeight: 300 }}>{g.desc}</p>
+              </div>
+              {active && (
+                <div style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', background: 'var(--acid)', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Check size={11} style={{ color: 'var(--brutal)', strokeWidth: 3 }} />
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+/* ── Step 3 — Camera ─────────────────────────────────────────────────── */
 const StepCamera = ({ granted, onRequest }: { granted: boolean; onRequest: () => void }) => (
-  <div className="flex flex-col gap-6">
-    <h2 className="font-serif italic text-[clamp(2rem,4vw,3rem)] text-forest dark:text-warmwhite leading-tight mb-2">
+  <div>
+    <h2 style={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800, fontSize: 'clamp(1.75rem, 4vw, 2.75rem)', color: 'var(--ink)', lineHeight: 1.05, marginBottom: '0.75rem' }}>
       Enable your camera
     </h2>
-    <p className="font-outfit text-charcoal/55 dark:text-warmwhite/45 leading-relaxed">
-      Yogifi AI needs camera access to track your poses in real time. Your video
-      <strong className="text-forest dark:text-sage"> never leaves your device</strong> — all processing happens locally.
+    <p style={{ color: 'var(--muted)', fontWeight: 300, marginBottom: '2rem', lineHeight: 1.7 }}>
+      Yogifi AI needs camera access to track your poses in real time. Your video{' '}
+      <strong style={{ color: 'var(--ink)', fontWeight: 600 }}>never leaves your device</strong> — all processing happens locally.
     </p>
 
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 my-4">
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '2rem' }}>
       {[
-        { icon: '🔒', title: 'Private',  desc: 'Video stays on device'    },
-        { icon: '⚡',  title: 'Real-Time', desc: 'Instant pose feedback'   },
-        { icon: '🚫', title: 'No Storage', desc: 'Nothing saved or uploaded' },
-      ].map(({ icon, title, desc }) => (
-        <div key={title} className="bg-warmwhite dark:bg-forest/20 border border-charcoal/8 dark:border-warmwhite/8 rounded-2xl p-4 text-center">
-          <div className="text-2xl mb-2">{icon}</div>
-          <p className="font-sans font-bold text-sm text-charcoal dark:text-warmwhite">{title}</p>
-          <p className="font-outfit text-xs text-charcoal/45 dark:text-warmwhite/35 mt-1">{desc}</p>
+        { label: 'Private',    desc: 'Video stays on device',     icon: '🔒' },
+        { label: 'Real-Time',  desc: 'Instant pose feedback',     icon: '⚡' },
+        { label: 'No Storage', desc: 'Nothing saved or uploaded', icon: '🚫' },
+      ].map(({ label, desc, icon }) => (
+        <div
+          key={label}
+          style={{ background: 'var(--bg)', padding: '1.25rem', textAlign: 'center', border: '2px solid var(--brutal)', boxShadow: '4px 4px 0 0 var(--brutal)' }}
+        >
+          <p style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>{icon}</p>
+          <p style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.3rem', fontFamily: '"Space Grotesk", sans-serif' }}>{label}</p>
+          <p style={{ fontSize: '0.75rem', color: 'var(--muted)', fontWeight: 300 }}>{desc}</p>
         </div>
       ))}
     </div>
 
     {granted ? (
-      <div className="flex items-center gap-3 bg-sage/10 border border-sage/25 rounded-2xl p-4">
-        <Check size={20} className="text-sage shrink-0" />
-        <p className="font-sans font-semibold text-sage">Camera access granted — you're all set!</p>
+      <div style={{ background: 'var(--acid)', border: '2px solid var(--brutal)', boxShadow: '4px 4px 0 0 var(--brutal)', padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <Check size={18} style={{ color: 'var(--brutal)', strokeWidth: 3, flexShrink: 0 }} />
+        <p style={{ color: 'var(--brutal)', fontWeight: 600, fontFamily: '"Space Grotesk", sans-serif', fontSize: '0.9rem' }}>
+          Camera access granted — you're all set!
+        </p>
       </div>
     ) : (
-      <button onClick={onRequest} className="btn-primary w-full !py-4 text-base">
-        <Camera size={18} />
+      <button onClick={onRequest} className="btn-brutalist" style={{ padding: '0.875rem 2rem' }}>
+        <Camera size={16} />
         <span>Allow Camera Access</span>
       </button>
     )}
   </div>
 );
 
-/* ── Step 4 — Pose tutorial ──────────────────────────────────────────── */
+/* ── Step 4 — Tutorial ───────────────────────────────────────────────── */
 const StepTutorial = () => {
   const poses = [
-    { name: 'Mountain Pose', sanskrit: 'Tadasana', img: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=400&q=80&auto=format', cues: ['Stand tall, feet hip-width', 'Arms relaxed at sides', 'Core gently engaged'] },
-    { name: 'Warrior II',    sanskrit: 'Virabhadrasana II', img: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&q=80&auto=format', cues: ['Front knee over ankle', 'Arms parallel to ground', 'Gaze over front fingers'] },
+    { name: 'Mountain Pose', sanskrit: 'Tadasana', cues: ['Stand tall, feet hip-width', 'Arms relaxed at sides', 'Core gently engaged'] },
+    { name: 'Warrior II',    sanskrit: 'Virabhadrasana II', cues: ['Front knee over ankle', 'Arms parallel to ground', 'Gaze over front fingers'] },
   ];
 
   return (
-    <div className="flex flex-col gap-4">
-      <h2 className="font-serif italic text-[clamp(2rem,4vw,3rem)] text-forest dark:text-warmwhite leading-tight mb-2">
+    <div>
+      <h2 style={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800, fontSize: 'clamp(1.75rem, 4vw, 2.75rem)', color: 'var(--ink)', lineHeight: 1.05, marginBottom: '0.75rem' }}>
         What good form looks like
       </h2>
-      <p className="font-outfit text-charcoal/55 dark:text-warmwhite/45 mb-4">
+      <p style={{ color: 'var(--muted)', fontWeight: 300, marginBottom: '2rem' }}>
         Yogifi AI tracks these alignment points in real time during your session.
       </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
         {poses.map(pose => (
-          <div key={pose.name} className="bg-warmwhite dark:bg-forest/20 border border-charcoal/8 dark:border-warmwhite/8 rounded-2xl overflow-hidden">
-            <div className="h-44 overflow-hidden">
-              <img src={pose.img} alt={pose.name} className="w-full h-full object-cover" />
-            </div>
-            <div className="p-4">
-              <p className="font-sans font-bold text-charcoal dark:text-warmwhite text-sm">{pose.name}</p>
-              <p className="font-mono text-xs text-gold mb-3">{pose.sanskrit}</p>
-              <ul className="flex flex-col gap-1.5">
-                {pose.cues.map(cue => (
-                  <li key={cue} className="flex items-center gap-2 text-xs text-charcoal/55 dark:text-warmwhite/45 font-outfit">
-                    <ChevronRight size={12} className="text-sage shrink-0" />
-                    {cue}
-                  </li>
-                ))}
-              </ul>
-            </div>
+          <div key={pose.name} style={{ background: 'var(--bg)', padding: '1.5rem', border: '2px solid var(--brutal)', boxShadow: '4px 4px 0 0 var(--brutal)' }}>
+            <p className="ck-label" style={{ marginBottom: '0.25rem', color: 'var(--accent)' }}>{pose.sanskrit}</p>
+            <p style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--ink)', marginBottom: '1rem', fontFamily: '"Space Grotesk", sans-serif' }}>{pose.name}</p>
+            <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', listStyle: 'none', padding: 0, margin: 0 }}>
+              {pose.cues.map(cue => (
+                <li key={cue} style={{ fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 300, paddingLeft: '1rem', borderLeft: '2px solid var(--accent)' }}>
+                  {cue}
+                </li>
+              ))}
+            </ul>
           </div>
         ))}
       </div>
@@ -188,12 +227,12 @@ const StepTutorial = () => {
   );
 };
 
-/* ── Main Onboarding component ──────────────────────────────────────── */
+/* ── Main component ─────────────────────────────────────────────────── */
 const Onboarding = () => {
   const navigate = useNavigate();
-  const [step, setStep]         = useState(1);
-  const [level, setLevel]       = useState<Level | null>(null);
-  const [goals, setGoals]       = useState<Goal[]>([]);
+  const [step,     setStep]     = useState(1);
+  const [level,    setLevel]    = useState<Level | null>(null);
+  const [goals,    setGoals]    = useState<Goal[]>([]);
   const [cameraOk, setCameraOk] = useState(false);
 
   const requestCamera = async () => {
@@ -217,65 +256,66 @@ const Onboarding = () => {
   };
 
   return (
-    <div className="min-h-screen bg-warmwhite dark:bg-forest-dark flex flex-col">
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 md:px-12 pt-8 pb-6">
-        <div className="flex items-center gap-2">
-          <Leaf size={20} className="text-forest dark:text-gold" />
-          <span className="font-outfit font-bold text-lg text-forest dark:text-warmwhite">Yogifi AI</span>
-        </div>
-        {step < TOTAL_STEPS && (
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="font-outfit text-sm text-charcoal/40 dark:text-warmwhite/30 hover:text-charcoal dark:hover:text-warmwhite transition-colors"
-          >
-            Skip for now
-          </button>
-        )}
-      </header>
+    <>
+      <BrutalistCursor />
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
 
-      {/* Progress */}
-      <div className="px-6 md:px-12 pb-8">
-        <div className="max-w-lg mx-auto">
-          <ProgressBar step={step} />
-          <p className="font-mono text-xs text-charcoal/30 dark:text-warmwhite/25 mt-2 text-right tracking-wider">
-            STEP {step} / {TOTAL_STEPS}
-          </p>
-        </div>
-      </div>
-
-      {/* Step content */}
-      <main className="flex-1 px-6 md:px-12 pb-8">
-        <div className="max-w-lg mx-auto">
-          {step === 1 && <StepLevel value={level} onChange={setLevel} />}
-          {step === 2 && <StepGoals value={goals} onChange={setGoals} />}
-          {step === 3 && <StepCamera granted={cameraOk} onRequest={requestCamera} />}
-          {step === 4 && <StepTutorial />}
-        </div>
-      </main>
-
-      {/* Footer CTA */}
-      <div className="px-6 md:px-12 py-8 border-t border-charcoal/6 dark:border-warmwhite/6">
-        <div className="max-w-lg mx-auto flex gap-3">
-          {step > 1 && (
+        {/* Header */}
+        <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '2rem 3rem', borderBottom: '1px solid var(--line)' }}>
+          <span style={{ fontFamily: '"Playfair Display", serif', fontStyle: 'italic', fontSize: '1.3rem', color: 'var(--ink)' }}>
+            Yogifi AI
+          </span>
+          {step < TOTAL_STEPS && (
             <button
-              onClick={() => setStep(s => s - 1)}
-              className="btn-secondary !px-6 !py-3.5 text-sm"
+              onClick={() => navigate('/dashboard')}
+              style={{ color: 'var(--muted)', fontSize: '0.8rem', fontWeight: 300, background: 'none', border: 'none', cursor: 'pointer' }}
             >
-              Back
+              Skip for now
             </button>
           )}
-          <button
-            onClick={handleNext}
-            disabled={!canAdvance()}
-            className="btn-primary flex-1 !py-3.5 text-base disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
-          >
-            <span>{step === TOTAL_STEPS ? 'Start Practicing' : 'Continue'}</span>
-            <ArrowRight size={18} />
-          </button>
+        </header>
+
+        {/* Progress pills */}
+        <div style={{ padding: '2rem 3rem 0' }}>
+          <div style={{ maxWidth: '600px' }}>
+            <StepPills step={step} />
+          </div>
+        </div>
+
+        {/* Step content */}
+        <main style={{ flex: 1, padding: '2.5rem 3rem' }}>
+          <div style={{ maxWidth: '600px' }}>
+            {step === 1 && <StepLevel value={level} onChange={setLevel} />}
+            {step === 2 && <StepGoals value={goals} onChange={setGoals} />}
+            {step === 3 && <StepCamera granted={cameraOk} onRequest={requestCamera} />}
+            {step === 4 && <StepTutorial />}
+          </div>
+        </main>
+
+        {/* Footer CTA */}
+        <div style={{ padding: '2rem 3rem', borderTop: '1px solid var(--line)', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ maxWidth: '600px', width: '100%', display: 'flex', gap: '0.75rem' }}>
+            {step > 1 && (
+              <button
+                onClick={() => setStep(s => s - 1)}
+                style={{ color: 'var(--ink)', background: 'none', border: '2px solid var(--ink)', padding: '0.75rem 1.5rem', cursor: 'pointer', fontWeight: 400, fontSize: '0.875rem', fontFamily: '"Space Grotesk", sans-serif' }}
+              >
+                Back
+              </button>
+            )}
+            <button
+              onClick={handleNext}
+              disabled={!canAdvance()}
+              className="btn-brutalist"
+              style={{ flex: 1, justifyContent: 'center', padding: '0.875rem 2rem', opacity: !canAdvance() ? 0.4 : 1 }}
+            >
+              <span>{step === TOTAL_STEPS ? 'Start Practicing' : 'Continue'}</span>
+              <ArrowRight size={16} />
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

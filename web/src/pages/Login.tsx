@@ -1,27 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import gsap from 'gsap';
-import { useGSAP } from '@gsap/react';
-import { ArrowRight, Loader2, Leaf } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import api, { setAccessToken } from '../lib/api';
+import BrutalistCursor from '../components/BrutalistCursor';
 
 const Login: React.FC = () => {
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState('');
-  const navigate     = useNavigate();
-  const containerRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
-  useGSAP(() => {
-    const ctx = gsap.context(() => {
-      gsap.from('.auth-elem', { y: 28, opacity: 0, stagger: 0.1, ease: 'power3.out', duration: 1, delay: 0.2 });
-      gsap.from('.auth-image', { scale: 1.06, opacity: 0, duration: 1.6, ease: 'power2.out' });
-    }, containerRef);
-    return () => ctx.revert();
-  }, []);
-
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -39,101 +29,174 @@ const Login: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [email, password, navigate]);
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-warmwhite dark:bg-forest-dark flex font-sans">
+    <>
+      <BrutalistCursor />
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex' }}>
 
-      {/* Left — image */}
-      <div className="hidden lg:block lg:w-1/2 relative overflow-hidden bg-forest-dark">
-        <div className="absolute inset-0 z-10" style={{ background: 'linear-gradient(to top, rgba(15,36,25,0.9) 0%, rgba(27,67,50,0.35) 55%, transparent 100%)' }} />
-        <img
-          src="https://images.unsplash.com/photo-1599901860904-17e08c2d4212?w=1200&q=85&auto=format&fit=crop"
-          alt="Yoga session"
-          className="auth-image absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute bottom-12 left-12 z-20">
-          <Link to="/" className="flex items-center gap-2.5 mb-4">
-            <Leaf size={18} className="text-gold" />
-            <span className="font-outfit font-bold text-xl text-warmwhite tracking-tight">Yogifi AI</span>
+        {/* Left — dark editorial panel */}
+        <div
+          className="hidden lg:flex lg:w-1/2 flex-col justify-between"
+          style={{ background: 'var(--ink)', color: 'var(--bg)', padding: '4rem', position: 'relative', overflow: 'hidden' }}
+        >
+          {/* Acid sticker badge */}
+          <div aria-hidden="true" style={{
+            position: 'absolute', top: '3.5rem', right: '3rem',
+            background: 'var(--acid)', border: '2px solid var(--bg)',
+            boxShadow: '4px 4px 0 0 var(--bg)',
+            transform: 'rotate(-2deg)', padding: '0.4rem 0.9rem',
+          }}>
+            <span style={{ fontFamily: '"Space Grotesk", sans-serif', fontWeight: 700, fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--brutal)' }}>
+              v0.9.2 ✦
+            </span>
+          </div>
+
+          <Link
+            to="/"
+            style={{ fontFamily: '"Playfair Display", serif', fontStyle: 'italic', fontSize: '1.4rem', color: 'var(--bg)', textDecoration: 'none' }}
+          >
+            Yogifi AI
           </Link>
-          <p className="font-serif italic text-warmwhite/60 text-xl max-w-xs leading-snug">
-            "Every session moves you closer to mastery."
-          </p>
-          <p className="font-mono text-warmwhite/30 text-[10px] mt-3 tracking-widest">SYSTEM ACTIVE · v0.9.2</p>
-        </div>
-      </div>
 
-      {/* Right — form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 md:p-16 relative">
-        <Link to="/" className="absolute top-8 left-8 lg:hidden flex items-center gap-2">
-          <Leaf size={16} className="text-forest dark:text-gold" />
-          <span className="font-outfit font-bold text-lg text-forest dark:text-warmwhite">Yogifi AI</span>
-        </Link>
-
-        <div className="w-full max-w-md">
-          <div className="auth-elem mb-10">
-            <div className="section-label mb-5 !bg-gold/8 !text-gold">Welcome back</div>
-            <h1 className="font-serif italic text-4xl sm:text-5xl text-forest dark:text-warmwhite mb-3 leading-tight">
-              Sign in to practice.
-            </h1>
-            <p className="font-outfit text-charcoal/50 dark:text-warmwhite/45">
-              Your AI coach is ready when you are.
+          <div>
+            <p style={{
+              fontFamily: '"Playfair Display", serif', fontStyle: 'italic',
+              fontSize: 'clamp(2.2rem, 4vw, 3.5rem)', lineHeight: 1.1,
+              color: 'var(--bg)', marginBottom: '1.5rem',
+            }}>
+              Every session<br />
+              <em style={{ color: 'var(--accent)' }}>moves you closer</em><br />
+              to mastery.
+            </p>
+            <p style={{ color: 'rgba(247,244,238,0.45)', fontWeight: 300, fontSize: '0.9rem', lineHeight: 1.6 }}>
+              Your AI-guided yoga coach — real-time pose feedback, every practice.
             </p>
           </div>
 
-          <form onSubmit={handleLogin} className="flex flex-col gap-6">
-            <div className="auth-elem flex flex-col gap-2">
-              <label className="font-mono text-[10px] tracking-widest text-charcoal/45 dark:text-warmwhite/35 uppercase">Email address</label>
-              <input
-                type="email" required value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="hello@example.com"
-                className="bg-transparent border-b-2 border-charcoal/15 dark:border-warmwhite/12 pb-3 text-lg font-outfit outline-none
-                  focus:border-forest dark:focus:border-gold transition-colors
-                  text-charcoal dark:text-warmwhite placeholder:text-charcoal/20 dark:placeholder:text-warmwhite/18"
-              />
+          <p style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: '0.65rem', letterSpacing: '0.1em', color: 'rgba(247,244,238,0.2)', textTransform: 'uppercase' }}>
+            System Active · v0.9.2
+          </p>
+        </div>
+
+        {/* Right — form */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3rem 2rem' }}>
+          <div style={{ width: '100%', maxWidth: '400px' }}>
+
+            {/* Mobile logo */}
+            <Link
+              to="/"
+              className="lg:hidden"
+              style={{ display: 'block', fontFamily: '"Playfair Display", serif', fontStyle: 'italic', fontSize: '1.3rem', color: 'var(--ink)', textDecoration: 'none', marginBottom: '2.5rem' }}
+            >
+              Yogifi AI
+            </Link>
+
+            <p className="ck-label" style={{ marginBottom: '0.75rem' }}>Welcome back</p>
+
+            {/* Brutalist heading: Outfit + Reenie Beanie */}
+            <div style={{ marginBottom: '2.5rem', lineHeight: 1.05 }}>
+              <span style={{ fontFamily: '"Outfit", sans-serif', fontWeight: 700, fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)', color: 'var(--ink)', display: 'block' }}>
+                Sign in to your
+              </span>
+              <span style={{ fontFamily: '"Reenie Beanie", cursive', fontWeight: 400, fontSize: 'clamp(2.4rem, 5vw, 3.2rem)', color: 'var(--accent)', display: 'block', lineHeight: 0.9 }}>
+                practice.
+              </span>
             </div>
 
-            <div className="auth-elem flex flex-col gap-2">
-              <div className="flex justify-between items-center">
-                <label className="font-mono text-[10px] tracking-widest text-charcoal/45 dark:text-warmwhite/35 uppercase">Password</label>
-                <a href="#" className="font-outfit text-xs text-charcoal/35 dark:text-warmwhite/28 hover:text-forest dark:hover:text-gold transition-colors">Forgot password?</a>
+            <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+              <div>
+                <label className="ck-label">Email address</label>
+                <input
+                  type="email" required value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="hello@example.com" className="ck-input"
+                />
               </div>
-              <input
-                type="password" required value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="bg-transparent border-b-2 border-charcoal/15 dark:border-warmwhite/12 pb-3 text-lg font-outfit outline-none
-                  focus:border-forest dark:focus:border-gold transition-colors
-                  text-charcoal dark:text-warmwhite placeholder:text-charcoal/20 dark:placeholder:text-warmwhite/18"
-              />
-            </div>
 
-            {error && (
-              <div className="auth-elem text-red-600 dark:text-red-400 text-sm font-sans bg-red-50 dark:bg-red-900/20 p-4 rounded-2xl border border-red-200 dark:border-red-900/40">
-                {error}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label className="ck-label" style={{ marginBottom: 0 }}>Password</label>
+                  <a href="#" style={{ fontSize: '0.75rem', color: 'var(--muted)', fontWeight: 300, textDecoration: 'none' }}>
+                    Forgot?
+                  </a>
+                </div>
+                <input
+                  type="password" required value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••" className="ck-input"
+                  style={{ marginTop: '0.5rem' }}
+                />
               </div>
-            )}
 
-            <div className="auth-elem mt-4">
+              {error && (
+                <div style={{
+                  background: 'var(--acid)', border: '2px solid var(--brutal)',
+                  boxShadow: '4px 4px 0 0 var(--brutal)', padding: '0.75rem 1rem',
+                  color: 'var(--brutal)', fontSize: '0.8rem', fontWeight: 600,
+                  lineHeight: 1.5, fontFamily: '"Space Grotesk", sans-serif',
+                }}>
+                  {error}
+                </div>
+              )}
+
               <button
                 type="submit" disabled={loading}
-                className="btn-primary w-full !py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+                className="btn-brutalist"
+                style={{ width: '100%', justifyContent: 'center', padding: '0.875rem 1.5rem', opacity: loading ? 0.6 : 1 }}
               >
                 {loading
-                  ? <Loader2 className="w-5 h-5 animate-spin" />
-                  : <><span>Sign in securely</span><ArrowRight size={18} /></>
+                  ? <Loader2 size={18} className="animate-spin" />
+                  : <><span>Sign in securely</span><ArrowRight size={16} /></>
                 }
               </button>
-            </div>
-          </form>
+            </form>
 
-          <div className="auth-elem mt-10 text-center text-sm text-charcoal/45 dark:text-warmwhite/30 font-outfit">
-            New to Yogifi?{' '}
-            <Link to="/signup" className="text-forest dark:text-gold font-semibold hover:underline ml-1">Create an account</Link>
+            {/* OR divider */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '1.75rem 0' }}>
+              <div style={{ flex: 1, height: '1px', background: 'var(--line)' }} />
+              <span style={{ fontFamily: '"Space Grotesk", sans-serif', fontSize: '0.7rem', letterSpacing: '0.1em', color: 'var(--muted)', textTransform: 'uppercase' }}>or</span>
+              <div style={{ flex: 1, height: '1px', background: 'var(--line)' }} />
+            </div>
+
+            {/* SSO buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {[
+                { label: 'Continue with Google',  icon: 'G' },
+                { label: 'Continue with Apple',   icon: '⌘' },
+              ].map(({ label, icon }) => (
+                <button
+                  key={label}
+                  type="button"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem',
+                    width: '100%', padding: '0.75rem 1.5rem',
+                    background: 'var(--bg)', border: '2px solid var(--brutal)',
+                    boxShadow: '4px 4px 0 0 var(--brutal)',
+                    cursor: 'pointer', fontSize: '0.875rem', fontWeight: 400, color: 'var(--ink)',
+                    transition: 'transform 0.1s, box-shadow 0.1s',
+                    fontFamily: '"Space Grotesk", sans-serif',
+                  }}
+                  onMouseEnter={e => { const el = e.currentTarget; el.style.transform = 'translate(4px,4px)'; el.style.boxShadow = 'none'; }}
+                  onMouseLeave={e => { const el = e.currentTarget; el.style.transform = ''; el.style.boxShadow = '4px 4px 0 0 var(--brutal)'; }}
+                >
+                  <span style={{ fontWeight: 700, fontSize: '1rem' }}>{icon}</span>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <p style={{ marginTop: '2rem', fontSize: '0.875rem', color: 'var(--muted)', fontWeight: 300 }}>
+              New to Yogifi?{' '}
+              <Link to="/signup" style={{ color: 'var(--ink)', textDecoration: 'underline', fontWeight: 400 }}>
+                Create an account
+              </Link>
+            </p>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

@@ -1,17 +1,14 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom';
-import gsap from 'gsap';
-import { useGSAP } from '@gsap/react';
 import {
   LayoutDashboard, LogOut, MessageSquare, HandMetal,
-  Dumbbell, ChefHat, Play, User, ChevronRight,
+  Dumbbell, ChefHat, Play, User,
 } from 'lucide-react';
 import api, { clearAccessToken, hasAccessToken, initSession } from '../lib/api';
+import BrutalistCursor from '../components/BrutalistCursor';
 
 const Dashboard: React.FC = () => {
-  const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  // Initialise synchronously from in-memory token; fall back to cookie refresh via effect
   const [sessionReady, setSessionReady] = useState(() => hasAccessToken());
 
   useEffect(() => {
@@ -26,13 +23,6 @@ const Dashboard: React.FC = () => {
     return () => { cancelled = true; };
   }, [navigate, sessionReady]);
 
-  useGSAP(() => {
-    const ctx = gsap.context(() => {
-      gsap.from('.dash-sidebar', { x: -40, opacity: 0, duration: 0.7, ease: 'power3.out' });
-    }, containerRef);
-    return () => ctx.revert();
-  }, []);
-
   const handleLogout = async () => {
     try { await api.post('/auth/logout'); } catch { /* ignore */ }
     clearAccessToken();
@@ -42,68 +32,118 @@ const Dashboard: React.FC = () => {
   if (!sessionReady) return null;
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-warmwhite dark:bg-forest-dark text-charcoal dark:text-warmwhite font-sans flex overflow-hidden">
+    <>
+      <BrutalistCursor />
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', overflow: 'hidden' }}>
 
-      {/* ── Sidebar ── */}
-      <aside className="dash-sidebar w-20 lg:w-64 border-r border-charcoal/6 dark:border-warmwhite/6 bg-warmwhite dark:bg-forest-dark flex flex-col justify-between py-8 z-20 hidden sm:flex shrink-0">
-        <div>
-          <div className="px-5 mb-10">
-            <Link to="/" className="hidden lg:flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-forest flex items-center justify-center text-xs font-bold text-warmwhite">Y</div>
-              <span className="font-outfit font-bold text-lg text-forest dark:text-warmwhite tracking-tight">Yogifi AI</span>
-            </Link>
-            <div className="w-9 h-9 bg-forest rounded-full lg:hidden flex items-center justify-center font-bold text-sm text-warmwhite">Y</div>
+        {/* ── Sidebar ── */}
+        <aside
+          className="hidden sm:flex"
+          style={{
+            width: '220px',
+            background: 'var(--brutal)',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            padding: '2rem 0',
+            flexShrink: 0,
+            borderRight: '2px solid rgba(210,232,35,0.15)',
+          }}
+        >
+          <div>
+            {/* Logo */}
+            <div style={{ padding: '0 1.5rem', marginBottom: '2.5rem' }}>
+              <Link
+                to="/"
+                style={{
+                  fontFamily: '"Playfair Display", serif',
+                  fontStyle: 'italic',
+                  fontSize: '1.3rem',
+                  color: 'var(--bg)',
+                  textDecoration: 'none',
+                  display: 'block',
+                }}
+              >
+                Yogifi AI
+              </Link>
+              {/* Acid accent underline */}
+              <div style={{ height: '2px', background: 'var(--acid)', width: '32px', marginTop: '0.5rem', opacity: 0.8 }} />
+            </div>
+
+            <nav style={{ display: 'flex', flexDirection: 'column' }}>
+              <NavItem icon={LayoutDashboard} label="Overview"  href="/dashboard" />
+              <NavItem icon={HandMetal}       label="Poses"     href="/dashboard/poses" />
+              <NavItem icon={Play}            label="Session"   href="/session" />
+              <NavItem icon={MessageSquare}   label="AI Chat"   href="/dashboard/chat" />
+              <NavItem icon={Dumbbell}        label="Exercise"  href="/dashboard/fitness" />
+              <NavItem icon={ChefHat}         label="Nutrition" href="/dashboard/nutrition" />
+            </nav>
           </div>
 
-          <nav className="flex flex-col gap-1 px-3">
-            <NavItem icon={LayoutDashboard} label="Overview"  href="/dashboard" />
-            <NavItem icon={HandMetal}       label="Poses"     href="/dashboard/poses" />
-            <NavItem icon={Play}            label="Session"   href="/session" />
-            <NavItem icon={MessageSquare}   label="AI Chat"   href="/dashboard/chat" />
-            <NavItem icon={Dumbbell}        label="Exercise"  href="/dashboard/fitness" />
-            <NavItem icon={ChefHat}         label="Nutrition" href="/dashboard/nutrition" />
-          </nav>
-        </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <NavItem icon={User} label="Profile" href="/profile" />
+            <button
+              onClick={handleLogout}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.75rem',
+                padding: '0.75rem 1.5rem',
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'rgba(247,244,238,0.3)',
+                fontSize: '0.82rem', fontWeight: 300, textAlign: 'left', width: '100%',
+                transition: 'color 0.15s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--acid)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(247,244,238,0.3)')}
+            >
+              <LogOut size={15} />
+              <span>Log Out</span>
+            </button>
+          </div>
+        </aside>
 
-        <div className="px-3 flex flex-col gap-1">
-          <NavItem icon={User} label="Profile" href="/profile" />
+        {/* ── Main content ── */}
+        <main style={{ flex: 1, overflowY: 'auto', height: '100vh' }}>
+          <div style={{ maxWidth: '1100px', padding: '3rem 2.5rem' }}>
+            <Outlet />
+          </div>
+        </main>
+
+        {/* ── Mobile bottom nav ── */}
+        <div
+          className="sm:hidden"
+          style={{
+            position: 'fixed', bottom: 0, left: 0, right: 0,
+            background: 'var(--brutal)',
+            borderTop: '2px solid rgba(210,232,35,0.2)',
+            padding: '0.75rem',
+            display: 'flex', justifyContent: 'space-around', zIndex: 50,
+          }}
+        >
+          {[
+            { to: '/dashboard',         Icon: LayoutDashboard, label: 'Home'    },
+            { to: '/dashboard/poses',   Icon: HandMetal,       label: 'Poses'   },
+            { to: '/dashboard/chat',    Icon: MessageSquare,   label: 'Chat'    },
+            { to: '/dashboard/fitness', Icon: Dumbbell,        label: 'Fitness' },
+            { to: '/profile',           Icon: User,            label: 'Profile' },
+          ].map(({ to, Icon, label }) => (
+            <Link
+              key={to}
+              to={to}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', color: 'rgba(247,244,238,0.4)', textDecoration: 'none' }}
+            >
+              <Icon size={18} />
+              <span style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: '0.6rem', letterSpacing: '0.05em' }}>{label}</span>
+            </Link>
+          ))}
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-charcoal/40 dark:text-warmwhite/35 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/15 transition-colors font-outfit text-sm font-medium"
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', color: 'rgba(247,244,238,0.4)', background: 'none', border: 'none', cursor: 'pointer' }}
           >
             <LogOut size={18} />
-            <span className="hidden lg:block">Log Out</span>
+            <span style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: '0.6rem', letterSpacing: '0.05em' }}>Out</span>
           </button>
         </div>
-      </aside>
-
-      {/* ── Main ── */}
-      <main className="flex-1 overflow-y-auto relative h-screen">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gold/4 rounded-full blur-[140px] pointer-events-none translate-x-1/3 -translate-y-1/3" />
-        <div className="max-w-6xl mx-auto p-6 lg:p-10 relative z-10">
-          <Outlet />
-        </div>
-      </main>
-
-      {/* ── Mobile nav ── */}
-      <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-warmwhite/95 dark:bg-forest-dark/95 backdrop-blur-xl border-t border-charcoal/8 dark:border-warmwhite/8 p-3 flex justify-around z-50">
-        {[
-          { to: '/dashboard',         Icon: LayoutDashboard, label: 'Home'     },
-          { to: '/dashboard/poses',   Icon: HandMetal,       label: 'Poses'    },
-          { to: '/dashboard/chat',    Icon: MessageSquare,   label: 'Chat'     },
-          { to: '/dashboard/fitness', Icon: Dumbbell,        label: 'Fitness'  },
-          { to: '/profile',           Icon: User,            label: 'Profile'  },
-        ].map(({ to, Icon, label }) => (
-          <Link key={to} to={to} className="p-2 flex flex-col items-center gap-1 text-charcoal/35 dark:text-warmwhite/35 hover:text-forest dark:hover:text-gold transition-colors">
-            <Icon size={20} />
-            <span className="text-[9px] font-mono">{label}</span>
-          </Link>
-        ))}
-        <button onClick={handleLogout} className="p-2 flex flex-col items-center gap-1 text-charcoal/35 dark:text-warmwhite/35 hover:text-red-500 transition-colors">
-          <LogOut size={20} /><span className="text-[9px] font-mono">Out</span>
-        </button>
       </div>
-    </div>
+    </>
   );
 };
 
@@ -116,15 +156,22 @@ const NavItem = ({ icon: Icon, label, href }: { icon: React.ElementType; label: 
   return (
     <Link
       to={href}
-      className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 group
-        ${isActive
-          ? 'bg-forest text-warmwhite shadow-sm'
-          : 'text-charcoal/50 dark:text-warmwhite/40 hover:bg-charcoal/5 dark:hover:bg-warmwhite/5 hover:text-charcoal dark:hover:text-warmwhite'
-        }`}
+      style={{
+        display: 'flex', alignItems: 'center', gap: '0.75rem',
+        padding: '0.75rem 1.5rem',
+        color:      isActive ? 'var(--brutal)'           : 'rgba(247,244,238,0.4)',
+        background: isActive ? 'var(--acid)'             : 'none',
+        borderLeft: isActive ? '3px solid var(--brutal)' : '3px solid transparent',
+        textDecoration: 'none',
+        fontSize: '0.82rem', fontWeight: isActive ? 700 : 300,
+        transition: 'all 0.15s',
+        fontFamily: isActive ? '"Space Grotesk", sans-serif' : 'inherit',
+      }}
+      onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = 'rgba(247,244,238,0.8)'; }}
+      onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = 'rgba(247,244,238,0.4)'; }}
     >
-      <Icon size={18} />
-      <span className="hidden lg:block font-outfit font-medium text-sm">{label}</span>
-      {isActive && <ChevronRight size={14} className="hidden lg:block ml-auto opacity-50" />}
+      <Icon size={15} />
+      <span>{label}</span>
     </Link>
   );
 };

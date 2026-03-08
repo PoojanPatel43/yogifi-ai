@@ -593,89 +593,38 @@ export const getCoachInsightsApi = async (
       };
     }
 
-    // If backend doesn't have AI coach, generate mock insights
-    return generateMockInsights(sessionId);
-  } catch (error: any) {
-    // Fallback to mock insights if API fails
-    console.log('Coach API failed, using mock insights:', error.message);
-    return generateMockInsights(sessionId);
-  }
-};
-
-// Generate mock AI coach insights based on session data
-const generateMockInsights = async (sessionId: string): Promise<ApiResponse<CoachInsight>> => {
-  // Get session details first
-  const sessionResponse = await getSessionByIdApi(sessionId);
-
-  if (!sessionResponse.success || !sessionResponse.data) {
+    // Backend returned a non-success response — use honest offline fallback
+    logDebug('Coach API non-success response, using offline fallback');
     return {
-      success: false,
-      error: 'Could not load session data',
+      success: true,
+      data: {
+        sessionId,
+        poseName: 'Yoga Session',
+        overallScore: 0,
+        durationSeconds: 0,
+        strengths: ['Your session was recorded successfully.'],
+        improvements: ['AI coaching is temporarily unavailable — check back shortly.'],
+        tips: ['Continue practicing consistently for best results.'],
+        encouragement: 'Every session counts. Your data has been saved and your AI coach will review it soon.',
+      },
+    };
+  } catch (error: any) {
+    // Fallback when API call itself fails — no additional network requests
+    logDebug('Coach API failed, using offline fallback:', error.message);
+    return {
+      success: true,
+      data: {
+        sessionId,
+        poseName: 'Yoga Session',
+        overallScore: 0,
+        durationSeconds: 0,
+        strengths: ['Your session was recorded successfully.'],
+        improvements: ['AI coaching is temporarily unavailable — check back shortly.'],
+        tips: ['Continue practicing consistently for best results.'],
+        encouragement: 'Every session counts. Your data has been saved and your AI coach will review it soon.',
+      },
     };
   }
-
-  const session = sessionResponse.data;
-  const score = session.overallScore || 75;
-  const duration = session.durationSeconds || 60;
-  const poseName = session.poseName || 'Yoga Pose';
-
-  // Generate contextual feedback based on score
-  const strengths: string[] = [];
-  const improvements: string[] = [];
-  const tips: string[] = [];
-  let encouragement = '';
-
-  if (score >= 85) {
-    strengths.push('Excellent form and body alignment');
-    strengths.push('Great stability throughout the pose');
-    strengths.push('Consistent breathing pattern');
-    improvements.push('Try holding the pose a bit longer next time');
-    tips.push('Challenge yourself with a more advanced variation');
-    encouragement = `Outstanding work on ${poseName}! Your dedication is paying off. Keep pushing your limits!`;
-  } else if (score >= 70) {
-    strengths.push('Good overall posture');
-    strengths.push('Steady improvement in form');
-    improvements.push('Focus on keeping your core engaged');
-    improvements.push('Work on holding the final position steadier');
-    tips.push('Try practicing in front of a mirror to check alignment');
-    tips.push('Remember to breathe deeply throughout');
-    encouragement = `Great progress on ${poseName}! You're building a solid foundation. Keep practicing!`;
-  } else {
-    strengths.push('Good effort and commitment');
-    strengths.push('Willingness to practice regularly');
-    improvements.push('Focus on proper alignment before depth');
-    improvements.push('Build up flexibility gradually');
-    improvements.push('Consider using props for support');
-    tips.push('Start with easier variations and progress slowly');
-    tips.push('Warm up properly before attempting this pose');
-    encouragement = `Every practice makes you stronger! ${poseName} takes time to master. Keep going!`;
-  }
-
-  // Add duration-based feedback
-  if (duration >= 60) {
-    strengths.push(`Great endurance - held for ${Math.floor(duration / 60)}+ minutes`);
-  } else if (duration < 30) {
-    tips.push('Try to gradually increase your hold time');
-  }
-
-  return {
-    success: true,
-    data: {
-      sessionId,
-      poseName,
-      overallScore: score,
-      durationSeconds: duration,
-      strengths: strengths.slice(0, 3),
-      improvements: improvements.slice(0, 3),
-      tips: tips.slice(0, 2),
-      encouragement,
-      comparison: {
-        vsAverage: Math.floor(Math.random() * 20) - 5, // -5 to +15
-        vsPrevious: Math.floor(Math.random() * 15), // 0 to +15
-        trend: score >= 80 ? 'improving' : score >= 65 ? 'stable' : 'improving',
-      },
-    },
-  };
 };
 
 // ============ AI Chat API ============

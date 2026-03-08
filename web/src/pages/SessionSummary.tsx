@@ -1,25 +1,24 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import gsap from 'gsap';
-import { useGSAP } from '@gsap/react';
-import { Star, TrendingUp, Share2, ArrowRight, Trophy, Flame, CheckCircle } from 'lucide-react';
+import { ArrowRight, Share2, TrendingUp } from 'lucide-react';
+import BrutalistCursor from '../components/BrutalistCursor';
 
 interface PoseResult {
-  name:      string;
-  accuracy:  number;
-  duration:  number;
-  feedback:  string;
+  name:     string;
+  accuracy: number;
+  duration: number;
+  feedback: string;
 }
 
 /* ── Animated score ring ─────────────────────────────────────────────── */
 const ScoreRing = ({ score }: { score: number }) => {
-  const radius      = 70;
+  const radius       = 65;
   const circumference = 2 * Math.PI * radius;
   const [displayed, setDisplayed] = useState(0);
 
   useEffect(() => {
     let frame: number;
-    const start   = performance.now();
+    const start    = performance.now();
     const duration = 1800;
     const animate  = (now: number) => {
       const progress = Math.min((now - start) / duration, 1);
@@ -32,24 +31,31 @@ const ScoreRing = ({ score }: { score: number }) => {
   }, [score]);
 
   const offset = circumference - (displayed / 100) * circumference;
-  const color  = score >= 80 ? '#D4AF37' : score >= 60 ? '#87A878' : '#CC5833';
+  const color  = score >= 80 ? '#C9472F' : score >= 60 ? '#6B6760' : '#D4813A';
 
   return (
-    <div className="relative w-44 h-44 flex items-center justify-center">
-      <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 160 160">
-        <circle cx="80" cy="80" r={radius} stroke="rgba(27,67,50,0.1)" strokeWidth="10" fill="none" />
+    <div style={{ position: 'relative', width: '160px', height: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', transform: 'rotate(-90deg)' }} viewBox="0 0 160 160">
+        <circle cx="80" cy="80" r={radius} stroke="var(--line)" strokeWidth="6" fill="none" />
         <circle
           cx="80" cy="80" r={radius}
-          stroke={color} strokeWidth="10" fill="none"
-          strokeLinecap="round"
+          stroke={color} strokeWidth="6" fill="none"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           style={{ transition: 'stroke-dashoffset 0.05s linear' }}
         />
       </svg>
-      <div className="flex flex-col items-center">
-        <span className="font-sans font-bold text-4xl text-charcoal dark:text-warmwhite leading-none">{displayed}</span>
-        <span className="font-mono text-xs text-charcoal/40 dark:text-warmwhite/35 mt-1">/ 100</span>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <span style={{
+          fontFamily: '"Playfair Display", serif',
+          fontStyle: 'italic',
+          fontSize: '2.5rem',
+          color: 'var(--ink)',
+          lineHeight: 1,
+        }}>
+          {displayed}
+        </span>
+        <span style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: '0.6rem', color: 'var(--muted)', letterSpacing: '0.08em' }}>/ 100</span>
       </div>
     </div>
   );
@@ -58,7 +64,7 @@ const ScoreRing = ({ score }: { score: number }) => {
 /* ── Pose accuracy bar ───────────────────────────────────────────────── */
 const PoseBar = ({ pose }: { pose: PoseResult }) => {
   const [width, setWidth] = useState(0);
-  const color = pose.accuracy >= 80 ? 'from-sage to-gold' : pose.accuracy >= 60 ? 'from-gold/70 to-gold' : 'from-clay/70 to-clay';
+  const barColor = pose.accuracy >= 80 ? 'var(--accent)' : pose.accuracy >= 60 ? 'var(--muted)' : 'var(--ink)';
 
   useEffect(() => {
     const t = setTimeout(() => setWidth(pose.accuracy), 200);
@@ -66,163 +72,146 @@ const PoseBar = ({ pose }: { pose: PoseResult }) => {
   }, [pose.accuracy]);
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex justify-between items-center">
-        <span className="font-sans font-semibold text-sm text-charcoal dark:text-warmwhite">{pose.name}</span>
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-xs text-charcoal/45 dark:text-warmwhite/35">{pose.duration}s hold</span>
-          <span className="font-bold text-sm text-charcoal dark:text-warmwhite">{pose.accuracy}%</span>
+    <div style={{ paddingBottom: '1.25rem', borderBottom: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <span style={{ fontWeight: 400, fontSize: '0.9rem', color: 'var(--ink)' }}>{pose.name}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+          <span style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: '0.7rem', color: 'var(--muted)' }}>{pose.duration}s</span>
+          <span style={{ fontWeight: 500, fontSize: '0.9rem', color: 'var(--ink)' }}>{pose.accuracy}%</span>
         </div>
       </div>
-      <div className="h-2 bg-charcoal/8 dark:bg-warmwhite/8 rounded-full overflow-hidden">
-        <div
-          className={`h-full bg-gradient-to-r ${color} rounded-full transition-all duration-1000 ease-out`}
-          style={{ width: `${width}%` }}
-        />
+      <div style={{ height: '2px', background: 'var(--line)', overflow: 'hidden' }}>
+        <div style={{ height: '100%', background: barColor, width: `${width}%`, transition: 'width 1s ease-out' }} />
       </div>
-      <p className="font-outfit text-xs text-charcoal/40 dark:text-warmwhite/30">{pose.feedback}</p>
+      <p style={{ fontSize: '0.78rem', color: 'var(--muted)', fontWeight: 300 }}>{pose.feedback}</p>
     </div>
   );
 };
 
-/* ── Main summary page ───────────────────────────────────────────────── */
+/* ── Main ────────────────────────────────────────────────────────────── */
 const SessionSummary = () => {
   const navigate  = useNavigate();
   const container = useRef<HTMLDivElement>(null);
 
-  // Mock session data — in production this comes from router state or API
   const sessionData = {
-    score:       87,
-    duration:    '24 min',
-    posesCount:  6,
-    streak:      12,
-    newBadge:    true,
-    aiInsight:   'Your Warrior II alignment improved 8° in hip rotation since last session. Focus on opening the chest more in Triangle Pose next time.',
+    score:      87,
+    duration:   '24 min',
+    posesCount: 6,
+    streak:     12,
+    aiInsight:  'Your Warrior II alignment improved 8° in hip rotation since last session. Focus on opening the chest more in Triangle Pose next time.',
     poses: [
-      { name: 'Mountain Pose',  accuracy: 96, duration: 45, feedback: 'Excellent alignment — body fully vertical' },
-      { name: 'Warrior II',     accuracy: 89, duration: 60, feedback: 'Good hip depth, slight front knee drift'   },
-      { name: 'Tree Pose',      accuracy: 82, duration: 30, feedback: 'Balance improved from last session'         },
-      { name: 'Triangle Pose',  accuracy: 74, duration: 40, feedback: 'Chest rotation needs more opening'          },
-      { name: 'Downward Dog',   accuracy: 91, duration: 50, feedback: 'Strong form, heels almost to floor'         },
-      { name: 'Child\'s Pose',  accuracy: 98, duration: 35, feedback: 'Perfect resting position'                  },
+      { name: 'Mountain Pose', accuracy: 96, duration: 45, feedback: 'Excellent alignment — body fully vertical'  },
+      { name: 'Warrior II',    accuracy: 89, duration: 60, feedback: 'Good hip depth, slight front knee drift'     },
+      { name: 'Tree Pose',     accuracy: 82, duration: 30, feedback: 'Balance improved from last session'          },
+      { name: 'Triangle Pose', accuracy: 74, duration: 40, feedback: 'Chest rotation needs more opening'           },
+      { name: 'Downward Dog',  accuracy: 91, duration: 50, feedback: 'Strong form, heels almost to floor'          },
+      { name: "Child's Pose",  accuracy: 98, duration: 35, feedback: 'Perfect resting position'                    },
     ] as PoseResult[],
   };
 
-  useGSAP(() => {
-    gsap.from('.summary-elem', {
-      y: 30,
-      opacity: 0,
-      stagger: 0.1,
-      ease: 'power2.out',
-      duration: 0.8,
-      delay: 0.2,
-    });
-  }, { scope: container });
-
   return (
-    <div ref={container} className="min-h-screen bg-warmwhite dark:bg-forest-dark px-6 md:px-12 py-10 font-sans">
-      <div className="max-w-3xl mx-auto">
+    <>
+    <BrutalistCursor />
+    <div ref={container} style={{ minHeight: '100vh', background: 'var(--bg)', padding: '3rem 2rem' }}>
+      <div style={{ maxWidth: '760px', margin: '0 auto' }}>
 
         {/* Header */}
-        <div className="summary-elem flex items-center justify-between mb-10">
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '3rem' }}>
           <div>
-            <div className="section-label mb-2 !bg-gold/10 !text-gold">Session Complete</div>
-            <h1 className="font-serif italic text-3xl md:text-4xl text-forest dark:text-warmwhite">
-              Great work today! 🌿
+            <p className="ck-label" style={{ marginBottom: '0.5rem', color: 'var(--accent)' }}>Session Complete</p>
+            <h1 style={{
+              fontFamily: '"Playfair Display", serif',
+              fontStyle: 'italic',
+              fontSize: 'clamp(2rem, 4vw, 2.75rem)',
+              color: 'var(--ink)',
+              lineHeight: 1.1,
+            }}>
+              Great work today.
             </h1>
           </div>
           <button
-            className="p-3 rounded-xl border border-charcoal/10 dark:border-warmwhite/10 hover:bg-charcoal/5 dark:hover:bg-warmwhite/5 transition-colors"
+            style={{ background: 'none', border: '1px solid var(--line)', padding: '0.625rem', cursor: 'pointer', color: 'var(--muted)', display: 'flex', alignItems: 'center' }}
             aria-label="Share session"
           >
-            <Share2 size={18} className="text-charcoal/50 dark:text-warmwhite/50" />
+            <Share2 size={16} />
           </button>
         </div>
 
-        {/* Score hero card */}
-        <div className="summary-elem bg-forest rounded-[2rem] p-8 flex flex-col md:flex-row items-center gap-8 mb-6">
+        {/* Score hero — dark brutal block */}
+        <div style={{ background: 'var(--brutal)', color: 'var(--bg)', padding: '2.5rem', display: 'flex', alignItems: 'center', gap: '2.5rem', marginBottom: '2px', flexWrap: 'wrap', border: '2px solid var(--brutal)', boxShadow: '8px 8px 0 0 var(--acid)' }}>
           <ScoreRing score={sessionData.score} />
-          <div className="flex-1 text-center md:text-left">
-            <p className="font-mono text-xs text-warmwhite/40 tracking-widest mb-2">OVERALL SCORE</p>
-            <h2 className="font-sans font-bold text-warmwhite text-2xl mb-1">
+          <div style={{ flex: 1, minWidth: '200px' }}>
+            <p style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: '0.65rem', letterSpacing: '0.1em', color: 'rgba(247,244,238,0.4)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
+              Overall Score
+            </p>
+            <h2 style={{ fontFamily: '"Playfair Display", serif', fontStyle: 'italic', fontSize: '1.5rem', color: 'var(--bg)', marginBottom: '0.5rem', lineHeight: 1.2 }}>
               {sessionData.score >= 80 ? 'Outstanding session' : sessionData.score >= 60 ? 'Good progress' : 'Keep practicing'}
             </h2>
-            <p className="font-outfit text-warmwhite/55 mb-5">
+            <p style={{ color: 'rgba(247,244,238,0.45)', fontWeight: 300, fontSize: '0.875rem', marginBottom: '1.25rem' }}>
               {sessionData.duration} · {sessionData.posesCount} poses completed
             </p>
-            {/* Quick stats row */}
-            <div className="flex flex-wrap gap-4 justify-center md:justify-start">
+            <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
               {[
-                { icon: <Flame size={14} />, label: `${sessionData.streak}-day streak`, color: 'text-gold' },
-                { icon: <CheckCircle size={14} />, label: `${sessionData.posesCount} poses`, color: 'text-sage' },
-                { icon: <Star size={14} />, label: 'Top score', color: 'text-gold' },
-              ].map(({ icon, label, color }) => (
-                <div key={label} className={`flex items-center gap-1.5 font-mono text-xs ${color}`}>
-                  {icon} {label}
-                </div>
+                { label: `${sessionData.streak}-day streak` },
+                { label: `${sessionData.posesCount} poses`  },
+                { label: 'Top score'                         },
+              ].map(({ label }) => (
+                <span key={label} style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: '0.7rem', color: 'var(--accent)', letterSpacing: '0.06em' }}>
+                  {label}
+                </span>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Achievement badge */}
-        {sessionData.newBadge && (
-          <div className="summary-elem bg-gold/10 border border-gold/20 rounded-2xl p-5 flex items-center gap-4 mb-6">
-            <div className="w-12 h-12 rounded-full bg-gold/15 flex items-center justify-center shrink-0">
-              <Trophy size={22} className="text-gold" />
-            </div>
-            <div>
-              <p className="font-sans font-bold text-charcoal dark:text-warmwhite text-sm">New achievement unlocked!</p>
-              <p className="font-outfit text-xs text-charcoal/50 dark:text-warmwhite/45 mt-0.5">
-                "Two-Week Warrior" — 14 days of consecutive practice
-              </p>
-            </div>
-          </div>
-        )}
+        {/* AI insight */}
+        <div style={{ background: 'var(--surface)', padding: '1.75rem', marginBottom: '2px', borderLeft: '3px solid var(--accent)', border: '2px solid var(--brutal)', boxShadow: '4px 4px 0 0 var(--brutal)' }}>
+          <p className="ck-label" style={{ marginBottom: '0.75rem', color: 'var(--accent)' }}>AI Coaching Insight</p>
+          <p style={{ color: 'var(--ink)', fontWeight: 300, lineHeight: 1.7, fontSize: '0.9rem' }}>
+            {sessionData.aiInsight}
+          </p>
+        </div>
 
-        {/* Per-pose breakdown */}
-        <div className="summary-elem bg-warmwhite dark:bg-forest/20 border border-charcoal/8 dark:border-warmwhite/8 rounded-[2rem] p-6 md:p-8 mb-6">
-          <h3 className="font-sans font-bold text-lg text-charcoal dark:text-warmwhite mb-6 flex items-center gap-2">
-            <TrendingUp size={18} className="text-forest dark:text-sage" />
-            Pose Breakdown
-          </h3>
-          <div className="flex flex-col gap-6">
+        {/* Pose breakdown */}
+        <div style={{ background: 'var(--bg)', padding: '2rem', border: '2px solid var(--brutal)', boxShadow: '4px 4px 0 0 var(--brutal)', marginBottom: '2.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.75rem' }}>
+            <TrendingUp size={15} style={{ color: 'var(--muted)' }} />
+            <h3 style={{
+              fontFamily: '"Playfair Display", serif',
+              fontStyle: 'italic',
+              fontSize: '1.2rem',
+              color: 'var(--ink)',
+            }}>
+              Pose Breakdown
+            </h3>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {sessionData.poses.map(pose => (
               <PoseBar key={pose.name} pose={pose} />
             ))}
           </div>
         </div>
 
-        {/* AI Insights */}
-        <div className="summary-elem bg-forest/6 dark:bg-forest/30 border border-forest/12 dark:border-forest/40 rounded-2xl p-6 mb-8">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-2 h-2 rounded-full bg-sage animate-pulse" />
-            <span className="font-mono text-xs text-forest dark:text-sage tracking-widest">AI COACHING INSIGHT</span>
-          </div>
-          <p className="font-outfit text-charcoal dark:text-warmwhite/80 leading-relaxed">
-            {sessionData.aiInsight}
-          </p>
-        </div>
-
         {/* CTAs */}
-        <div className="summary-elem flex flex-col sm:flex-row gap-4">
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <button
             onClick={() => navigate('/session')}
-            className="btn-primary flex-1 !py-4 text-base"
+            className="btn-brutalist"
+            style={{ flex: 1, justifyContent: 'center', padding: '0.875rem' }}
           >
             <span>Start Next Session</span>
-            <ArrowRight size={18} />
+            <ArrowRight size={16} />
           </button>
           <button
             onClick={() => navigate('/dashboard')}
-            className="btn-secondary flex-1 !py-4 text-base"
+            style={{ flex: 1, padding: '0.875rem', background: 'none', border: '1px solid var(--ink)', color: 'var(--ink)', cursor: 'pointer', fontWeight: 300, fontSize: '0.875rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             View Progress
           </button>
         </div>
-
       </div>
     </div>
+    </>
   );
 };
 

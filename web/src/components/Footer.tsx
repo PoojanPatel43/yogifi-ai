@@ -1,75 +1,103 @@
-const Footer = () => {
-  const productLinks = [
-    { href: '#features',   label: 'Features'   },
-    { href: '#philosophy', label: 'Philosophy' },
-    { href: '#protocol',   label: 'Method'     },
-    { href: '#pricing',    label: 'Pricing'    },
-  ];
-  const companyLinks = [
-    { href: '#', label: 'About'   },
-    { href: '#', label: 'Blog'    },
-    { href: '#', label: 'Privacy' },
-    { href: '#', label: 'Terms'   },
-  ];
+/**
+ * Footer — two-part layout.
+ *
+ * Top:    Newsletter signup strip — email input + btn-brutalist submit.
+ * Bottom: Brand wordmark · copyright · Privacy / Terms / GitHub links.
+ *
+ * Clauaskee rules: no border-radius on any element.
+ */
+import { ArrowRight } from 'lucide-react';
 
-  return (
-    <footer className="w-full bg-forest-dark rounded-[3.5rem_3.5rem_0_0] pt-20 pb-8 px-6 md:px-12 lg:px-20 -mt-8 relative z-40">
+const Footer = () => (
+  <footer style={{ borderTop: '1px solid var(--line)', backgroundColor: 'var(--bg)' }}>
 
-      {/* Top row */}
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8 mb-16 text-warmwhite">
-
-        {/* Brand */}
-        <div className="lg:col-span-2 flex flex-col items-start pr-8">
-          <div className="flex items-center gap-2.5 mb-5">
-            <div className="w-9 h-9 rounded-full bg-gold/15 border border-gold/20 flex items-center justify-center font-bold text-sm text-gold">Y</div>
-            <span className="font-outfit font-bold text-xl tracking-tight">Yogifi AI</span>
-          </div>
-          <p className="font-outfit text-warmwhite/40 text-sm max-w-xs mb-8 leading-relaxed">
-            Personalized wellness coaching powered by computer vision. Your body, understood in real time.
-          </p>
-          {/* Status pill */}
-          <div className="flex items-center gap-2 mt-auto bg-warmwhite/5 border border-warmwhite/8 rounded-full px-4 py-2">
-            <div className="w-2 h-2 rounded-full bg-sage animate-pulse" />
-            <span className="font-mono text-[10px] text-warmwhite/35 tracking-widest">SYSTEM OPERATIONAL · v0.9.2-beta</span>
-          </div>
+    {/* ── Newsletter strip ──────────────────────────────────────────────── */}
+    <div style={{ borderBottom: '1px solid var(--line)', padding: '3.5rem 2rem' }}>
+      <div
+        style={{
+          maxWidth: '1200px', margin: '0 auto',
+          display: 'grid', gridTemplateColumns: '1fr 1fr',
+          alignItems: 'center', gap: '4rem',
+        }}
+        className="max-lg:grid-cols-1 max-lg:gap-6"
+      >
+        {/* Heading */}
+        <div>
+          <p className="ck-label mb-3" style={{ color: 'var(--accent)' }}>Stay in the loop</p>
+          <h3 style={{
+            fontFamily: '"Playfair Display", serif',
+            fontStyle: 'italic',
+            fontWeight: 700,
+            fontSize: 'clamp(1.6rem, 3vw, 2.4rem)',
+            letterSpacing: '-0.025em',
+            lineHeight: 1,
+            color: 'var(--ink)',
+          }}>
+            Early access &amp; updates.
+          </h3>
         </div>
 
-        {/* Product links */}
-        <div className="flex flex-col">
-          <h4 className="font-mono text-[10px] text-warmwhite/30 tracking-widest mb-5 uppercase">Product</h4>
-          <div className="flex flex-col gap-3.5">
-            {productLinks.map(({ href, label }) => (
-              <a key={href} href={href} className="link-lift font-sans text-sm font-medium text-warmwhite/55 hover:text-gold transition-colors duration-200 w-fit">
-                {label}
-              </a>
-            ))}
-          </div>
-        </div>
-
-        {/* Company links */}
-        <div className="flex flex-col">
-          <h4 className="font-mono text-[10px] text-warmwhite/30 tracking-widest mb-5 uppercase">Company</h4>
-          <div className="flex flex-col gap-3.5">
-            {companyLinks.map(({ href, label }) => (
-              <a key={label} href={href} className="link-lift font-sans text-sm font-medium text-warmwhite/55 hover:text-gold transition-colors duration-200 w-fit">
-                {label}
-              </a>
-            ))}
-          </div>
-        </div>
+        {/* Form */}
+        <form
+          onSubmit={e => e.preventDefault()}
+          style={{ display: 'flex', alignItems: 'flex-end', gap: '1rem' }}
+        >
+          <input
+            type="email"
+            placeholder="your@email.com"
+            className="ck-input"
+            style={{ flex: 1 }}
+            aria-label="Email address"
+          />
+          <button type="submit" className="btn-brutalist" style={{ flexShrink: 0 }}>
+            Subscribe <ArrowRight size={13} />
+          </button>
+        </form>
       </div>
+    </div>
 
-      {/* Bottom row */}
-      <div className="max-w-7xl mx-auto pt-7 border-t border-warmwhite/[0.06] flex flex-col sm:flex-row items-center justify-between gap-4">
-        <p className="font-mono text-xs text-warmwhite/25">© 2025 Yogifi AI. All rights reserved.</p>
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-[10px] text-warmwhite/20 tracking-widest">BUILT WITH</span>
-          <span className="text-gold text-sm">♥</span>
-          <span className="font-mono text-[10px] text-warmwhite/20 tracking-widest">& AI</span>
-        </div>
+    {/* ── Copyright bar ─────────────────────────────────────────────────── */}
+    <div
+      style={{
+        maxWidth: '1200px', margin: '0 auto', padding: '2rem',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        flexWrap: 'wrap', gap: '1rem',
+      }}
+    >
+      <span style={{
+        fontFamily: '"Playfair Display", serif',
+        fontStyle: 'italic',
+        fontWeight: 700,
+        fontSize: '1.1rem',
+        color: 'var(--ink)',
+        letterSpacing: '-0.02em',
+      }}>
+        Yogifi
+      </span>
+
+      <p className="ck-label">© 2026 Yogifi AI. All rights reserved.</p>
+
+      <div className="flex items-center gap-6">
+        {[
+          { label: 'Privacy', href: '#' },
+          { label: 'Terms',   href: '#' },
+          { label: 'GitHub',  href: '#' },
+        ].map(link => (
+          <a
+            key={link.label}
+            href={link.href}
+            className="ck-label"
+            style={{ textDecoration: 'none', transition: 'color 0.2s' }}
+            onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = 'var(--accent)')}
+            onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = 'var(--muted)')}
+          >
+            {link.label}
+          </a>
+        ))}
       </div>
-    </footer>
-  );
-};
+    </div>
+
+  </footer>
+);
 
 export default Footer;

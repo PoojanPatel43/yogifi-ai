@@ -76,7 +76,7 @@ public class ChatService {
         Try these fixes: (1) Engage your core and draw your tailbone down toward the floor.
         (2) Press your front knee outward so it tracks over your second toe.
         (3) Shorten your stance slightly if the hip flexors feel strained.
-        If the pain is sharp or radiates down the leg, rest and see a physio before continuing. 💪
+        If the pain is sharp or radiates down the leg, stop practice and consult a physiotherapist before returning to the mat.
 
         User: How long should I hold each pose for a beginner?
         Yogi: As a beginner, aim for **5–8 slow breaths** per pose (roughly 30–45 seconds).

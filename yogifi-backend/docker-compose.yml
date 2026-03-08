@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
@@ -37,6 +37,12 @@ services:
       AI_PROVIDER: ${AI_PROVIDER:-gemini}
       AI_API_KEY: ${AI_API_KEY}
       AI_API_URL: ${AI_API_URL}
+      # host.docker.internal resolves to the host machine on Docker Desktop (macOS/Windows).
+      # This lets Spring Boot reach the Python pose-service running natively on the host.
+      POSE_SERVICE_URL: http://host.docker.internal:8001
+    extra_hosts:
+      # Ensures host.docker.internal resolves even on Linux Docker (host-gateway = host IP).
+      - "host.docker.internal:host-gateway"
     ports:
       - "8080:8080"
     depends_on:

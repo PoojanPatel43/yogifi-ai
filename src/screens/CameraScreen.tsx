@@ -11,8 +11,10 @@ import {
 } from 'react-native';
 import { CameraView, CameraType } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, CameraSessionState } from '../types';
+import { useAuth } from '../context/AuthContext';
 import Colors from '../constants/colors';
 import { APP_CONFIG, generateMockScores, getRandomEncouragement } from '../constants/config';
 import {
@@ -45,6 +47,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Camera'>;
 const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
   const { poseId, poseName = 'Yoga Pose' } = route.params ?? {};
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
   // ── Permission ────────────────────────────────────────────────────────────
   const [permissionStatus, setPermissionStatus] = useState<'granted' | 'denied' | 'undetermined'>('undetermined');
@@ -212,6 +215,19 @@ const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
     }
     isAnalyzingRef.current = false;
   }, []);
+
+  // =========================================================================
+  // Auth guard: loading gate — never redirect until auth is fully resolved
+  // =========================================================================
+  useFocusEffect(
+    useCallback(() => {
+      if (isAuthLoading) return; // Auth still resolving — hold
+      if (!isAuthenticated) {
+        // Token expired or cleared (e.g. 401 mid-session) — clean up then exit
+        stopFrameLoop();
+      }
+    }, [isAuthLoading, isAuthenticated, stopFrameLoop])
+  );
 
   // =========================================================================
   // Helpers
@@ -396,6 +412,15 @@ const CameraScreen: React.FC<Props> = ({ navigation, route }) => {
   // =========================================================================
   // Render: permission states
   // =========================================================================
+  // Auth loading gate: hold rendering until auth state is fully resolved
+  if (isAuthLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
   if (isCheckingPermission) {
     return (
       <View style={styles.loadingContainer}>

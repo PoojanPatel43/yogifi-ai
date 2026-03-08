@@ -37,33 +37,37 @@ public class CoachService {
     private static final String SYSTEM_PROMPT = """
         <persona>
         You are an expert yoga biomechanics coach inside the Yogifi app.
-        You analyse a student's completed yoga session using objective joint-angle
-        measurements captured by the app's pose-detection model.
-        Your feedback is specific, anatomically accurate, and motivating.
+        You analyse a student's completed yoga session using objective data captured
+        by the app's BlazePose + TFLite pose-detection model:
+        alignment scores, stability scores, and flagged joint corrections with severity ratings.
+        Your feedback is specific, anatomically grounded, and motivating — never generic.
         </persona>
 
         <task>
-        Given a session summary (pose name, duration, scores, and flagged joint corrections),
-        produce a concise post-session coaching report.
+        Given a session summary, produce a concise post-session coaching report.
 
-        Tailor depth to the score tier:
-        - Score ≥ 85 (Advanced): emphasise refinement, breath control, deeper variations.
-        - Score 65–84 (Intermediate): balance praise with 2–3 concrete alignment fixes.
-        - Score < 65 (Beginner): prioritise safety cues and one foundational habit to build.
+        Tailor depth to the score tier supplied in the input:
+        - Advanced  (≥ 85): emphasise refinement, breath integration, deeper variations.
+        - Intermediate (65–84): balance praise with 2–3 concrete, joint-specific alignment fixes.
+        - Beginner  (< 65): prioritise one safety cue and one foundational habit to build this week.
 
-        Always reference the SPECIFIC joints or corrections provided in the input.
-        Never give generic advice like "keep practicing" without backing it with a specific cue.
+        Rules:
+        1. Reference SPECIFIC joints and corrections from the input — never invent corrections not listed.
+        2. If duration_seconds is included for a correction, mention how long the issue persisted.
+        3. Never say "keep practicing" without pairing it with a specific next action.
+        4. Strengths must be grounded in the numeric scores, not assumed.
         </task>
 
         <output_contract>
         Respond ONLY with valid JSON matching this exact schema — no preamble, no markdown fences:
         {
-          "strengths":        ["<1-2 sentence observation tied to the session data>"],
-          "improvements":     ["<specific, actionable fix with the target joint/angle named>"],
-          "tips":             ["<one technique tip the student can apply next session>"],
-          "encouragement":    "<2-3 sentences: acknowledge effort, name what improved, set direction>",
-          "nextSessionFocus": "<single concrete focus area for their very next session>"
+          "strengths":        ["<1-2 sentence observation tied to the session scores/data>"],
+          "improvements":     ["<actionable fix naming the specific joint and what to do>"],
+          "tips":             ["<one technique the student can try in their very next session>"],
+          "encouragement":    "<2-3 sentences: acknowledge effort, reference the score, set a direction>",
+          "nextSessionFocus": "<single, specific focus area for the next session>"
         }
+        Array fields: strengths 1–3 items, improvements 1–3 items, tips exactly 1 item.
         </output_contract>
 
         <example>
@@ -71,30 +75,31 @@ public class CoachService {
         {
           "pose": "Warrior II",
           "score": 72,
+          "tier": "Intermediate",
           "duration_seconds": 45,
           "alignment_score": 68,
           "stability_score": 80,
           "corrections": [
-            { "joint": "left_knee_angle", "current": 112, "target": 90, "instruction": "Bend your left knee more" },
-            { "joint": "left_shoulder_angle", "current": 75, "target": 90, "instruction": "Raise your left arm higher" }
+            { "joint": "left_knee", "severity": "high", "instruction": "Bend your left knee more toward 90°", "duration_seconds": 30 },
+            { "joint": "left_shoulder", "severity": "medium", "instruction": "Raise your left arm to shoulder height" }
           ]
         }
 
         Correct output:
         {
           "strengths": [
-            "Good stability (80/100) — your base was solid and your back leg held firm throughout.",
-            "You maintained the pose for 45 seconds, which builds the endurance Warrior II demands."
+            "Solid stability (80/100) — your back leg held firm and your base didn't waver.",
+            "45-second hold in Warrior II is strong; intermediate students typically manage 30 seconds."
           ],
           "improvements": [
-            "Left knee: bend to 90° (currently 112°). Stack the knee directly over the ankle; driving the knee outward over the pinky toe protects the joint and engages the glute.",
-            "Left arm: raise to shoulder height (currently 75°). Imagine pressing the back of your hand against a wall as you lift — this activates the mid-trap and stops the shoulder from collapsing."
+            "Left knee: bend deeper toward 90° — this was flagged for 30 of your 45 seconds. Drive the knee outward over your pinky toe to protect the joint and engage the glute fully.",
+            "Left arm: raise to shoulder height. Think of pressing the back of your hand against a wall as you lift — this recruits the mid-trap and prevents the shoulder from collapsing."
           ],
           "tips": [
-            "Before lowering into the lunge, inhale to lengthen your spine first. The exhale then drops you into the 90° bend naturally without forcing the knee past the ankle."
+            "Inhale to lengthen your spine before lowering into the lunge. The exhale then drops you into the bend naturally, making it easier to hit 90° without forcing the knee past the ankle."
           ],
-          "encouragement": "A 72 in Warrior II with 45 seconds of hold shows real commitment — most beginners tap out at 20 seconds. Your stability score of 80 tells me your foundation is strong. Focus on the knee and arm alignment next time and you'll easily cross 85.",
-          "nextSessionFocus": "Front knee alignment: arrive in the pose slowly, check the knee is tracking over the second toe before going deeper."
+          "encouragement": "A 72 with 45 seconds of hold is genuine Warrior II work — most intermediates struggle past 30. Your stability foundation is strong at 80. Nail the knee alignment and you'll clear 85 next session.",
+          "nextSessionFocus": "Left knee depth: set up in Warrior II slowly, confirm the knee tracks over the second toe before adding depth."
         }
         </example>
         """;
@@ -123,9 +128,15 @@ public class CoachService {
         int    durationSeconds = session.getDurationSeconds() != null ? session.getDurationSeconds() : 0;
         String poseName        = session.getPose() != null ? session.getPose().getName() : "Yoga Pose";
 
+        // Load mistakes in a separate query to avoid MultipleBagFetchException
+        java.util.List<com.yogifi.model.PoseMistake> mistakes =
+                sessionRepository.findByIdWithMistakes(sessionId)
+                        .map(s -> s.getMistakes())
+                        .orElse(java.util.List.of());
+
         // Build a rich, structured user message that feeds real data into the prompt
         String userMessage = buildUserMessage(
-                poseName, overallScore, alignmentScore, stabilityScore, durationSeconds);
+                poseName, overallScore, alignmentScore, stabilityScore, durationSeconds, mistakes);
 
         AnthropicService.LlmCallRecord record = null;
         try {
@@ -166,14 +177,61 @@ public class CoachService {
 
     /**
      * Constructs the user message injected into the prompt.
-     * We include the real correction objects from the pose model so the LLM
-     * can name specific joints and target angles — not generic advice.
+     * Includes real PoseMistake records so the LLM can name specific joints
+     * and target angles rather than producing generic advice.
      */
     private String buildUserMessage(String poseName, double overall,
                                     double alignment, double stability,
-                                    int durationSeconds) {
+                                    int durationSeconds,
+                                    java.util.List<com.yogifi.model.PoseMistake> mistakes) {
         // Derive a simple tier label so the model can adjust depth without calculation
         String tier = overall >= 85 ? "Advanced" : overall >= 65 ? "Intermediate" : "Beginner";
+
+        // Serialize up to 5 highest-severity corrections into the prompt.
+        // Ordering: CRITICAL > HIGH > MEDIUM > LOW — take the most impactful ones.
+        java.util.List<com.yogifi.model.PoseMistake> topMistakes = mistakes.stream()
+                .sorted(java.util.Comparator.comparingInt(m -> {
+                    return switch (m.getSeverity()) {
+                        case CRITICAL -> 0;
+                        case HIGH     -> 1;
+                        case MEDIUM   -> 2;
+                        case LOW      -> 3;
+                    };
+                }))
+                .limit(5)
+                .toList();
+
+        StringBuilder correctionsJson = new StringBuilder("[");
+        for (int i = 0; i < topMistakes.size(); i++) {
+            com.yogifi.model.PoseMistake m = topMistakes.get(i);
+            if (i > 0) correctionsJson.append(",");
+            String instruction = m.getCorrection() != null
+                    ? m.getCorrection().replace("\"", "'")
+                    : m.getDescription() != null
+                            ? m.getDescription().replace("\"", "'")
+                            : m.getMistakeType();
+            // Include duration_seconds so the LLM can reference how long the mistake persisted
+            String durField = m.getDurationSeconds() != null
+                    ? String.format(",\"duration_seconds\":%.0f", m.getDurationSeconds())
+                    : "";
+            // Include measured/target angles when available so the LLM can give precise cues
+            String angleFields = "";
+            if (m.getCurrentAngle() != null) {
+                angleFields += String.format(",\"current_angle\":%.1f", m.getCurrentAngle());
+            }
+            if (m.getTargetAngle() != null) {
+                angleFields += String.format(",\"target_angle\":%.1f", m.getTargetAngle());
+            }
+            correctionsJson.append(String.format(
+                    "{\"joint\":\"%s\",\"severity\":\"%s\",\"instruction\":\"%s\"%s%s}",
+                    m.getJoint(),
+                    m.getSeverity().name().toLowerCase(),
+                    instruction,
+                    durField,
+                    angleFields
+            ));
+        }
+        correctionsJson.append("]");
 
         return String.format("""
             {
@@ -183,10 +241,11 @@ public class CoachService {
               "duration_seconds": %d,
               "alignment_score": %.1f,
               "stability_score": %.1f,
-              "coaching_note": "Alignment is the primary weakness; stability is the strength."
+              "corrections": %s
             }
             Provide coaching insights following the output contract exactly.""",
-                poseName, overall, tier, durationSeconds, alignment, stability);
+                poseName, overall, tier, durationSeconds, alignment, stability,
+                correctionsJson);
     }
 
     /**

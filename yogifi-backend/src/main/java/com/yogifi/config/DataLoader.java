@@ -24,12 +24,14 @@ public class DataLoader implements CommandLineRunner {
     @Transactional
     public void run(String... args) {
         long current = poseRepository.count();
-        if (current == EXPECTED_POSE_COUNT) {
-            log.info("Pose data up-to-date ({} poses). Skipping seed.", current);
+        if (current > 0) {
+            // Poses already exist — skip seeding to avoid FK violations from
+            // existing session records that reference pose rows.
+            // To add or update poses use a proper DB migration instead.
+            log.info("Poses already present ({} found, {} expected). Skipping seed.", current, EXPECTED_POSE_COUNT);
             return;
         }
-        log.info("Re-seeding poses (found {}, expected {})...", current, EXPECTED_POSE_COUNT);
-        poseRepository.deleteAll();
+        log.info("No poses found — seeding {} ML-ready poses...", EXPECTED_POSE_COUNT);
         loadPoses();
         log.info("Seeded {} ML-ready poses.", poseRepository.count());
     }

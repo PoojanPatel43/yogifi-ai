@@ -143,13 +143,14 @@ public class AnthropicService {
         ObjectNode body = objectMapper.createObjectNode();
         ArrayNode contents = objectMapper.createArrayNode();
 
-        // Gemini has no dedicated system role — prepend as first user turn
-        ObjectNode sysMsg = objectMapper.createObjectNode();
-        sysMsg.put("role", "user");
-        ArrayNode sysParts = objectMapper.createArrayNode();
-        sysParts.add(objectMapper.createObjectNode().put("text", systemPrompt));
-        sysMsg.set("parts", sysParts);
-        contents.add(sysMsg);
+        // Gemini 1.5+ supports system_instruction as a top-level field.
+        // Use it instead of injecting the system prompt as a user turn, which
+        // pollutes the conversation history and can confuse the model.
+        ObjectNode systemInstruction = objectMapper.createObjectNode();
+        ArrayNode sysInstrParts = objectMapper.createArrayNode();
+        sysInstrParts.add(objectMapper.createObjectNode().put("text", systemPrompt));
+        systemInstruction.set("parts", sysInstrParts);
+        body.set("system_instruction", systemInstruction);
 
         for (Map<String, String> msg : messages) {
             ObjectNode node = objectMapper.createObjectNode();

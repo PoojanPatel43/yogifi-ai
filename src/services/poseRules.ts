@@ -307,7 +307,8 @@ const treePoseRules: PoseRuleSet = {
     {
       name: 'Body Vertical',
       type: 'vertical',
-      points: ['nose', 'left_hip'],
+      // Use nose + both hips so the x-spread reflects actual lean, not anatomical offset
+      points: ['nose', 'left_hip', 'right_hip'],
       tolerance: 0.05,
       yellowTolerance: 0.1,
       weight: 0.3,
@@ -481,6 +482,99 @@ function getKeypoint(keypoints: Keypoint[], name: KeypointName): Keypoint | null
   return kp && kp.confidence > 0.3 ? kp : null;
 }
 
+/**
+ * Swap "left_" <-> "right_" in a keypoint name.
+ * e.g. "left_knee" -> "right_knee", "right_ankle" -> "left_ankle"
+ */
+function mirrorSide(name: KeypointName): KeypointName {
+  if ((name as string).startsWith('left_')) {
+    return (name as string).replace('left_', 'right_') as KeypointName;
+  }
+  if ((name as string).startsWith('right_')) {
+    return (name as string).replace('right_', 'left_') as KeypointName;
+  }
+  return name;
+}
+
+/**
+ * Mirror all left/right joint references in a PoseRuleSet to produce
+ * the opposite-side equivalent (e.g. right-lead Warrior II).
+ */
+function mirrorRuleSet(rules: PoseRuleSet): PoseRuleSet {
+  return {
+    ...rules,
+    angleRules: rules.angleRules.map(r => ({
+      ...r,
+      joint: mirrorSide(r.joint),
+      points: r.points.map(mirrorSide) as [KeypointName, KeypointName, KeypointName],
+    })),
+    alignmentRules: rules.alignmentRules.map(r => ({
+      ...r,
+      points: r.points.map(mirrorSide),
+    })),
+    positionRules: rules.positionRules.map(r => ({
+      ...r,
+      point1: mirrorSide(r.point1),
+      point2: mirrorSide(r.point2),
+    })),
+  };
+}
+
+/**
+ * Detect which leg is the lead (front) leg for Warrior II.
+ *
+ * In a front-facing (selfie) camera feed the image is mirrored horizontally.
+ * In Warrior II the front foot points toward the camera while the back foot
+ * extends sideways — so the front ankle sits closer to the horizontal center
+ * of the frame (x ≈ 0.5) while the back ankle is pushed toward an edge.
+ *
+ * Returns 'left' when the left ankle is the front foot (user faces right
+ * in the mirrored image), otherwise 'right'.
+ */
+function detectLeadLeg(keypoints: Keypoint[]): 'left' | 'right' {
+  const leftAnkle = getKeypoint(keypoints, 'left_ankle');
+  const rightAnkle = getKeypoint(keypoints, 'right_ankle');
+  if (!leftAnkle || !rightAnkle) return 'left'; // fallback to default rule set
+  const leftDistFromCenter = Math.abs(leftAnkle.x - 0.5);
+  const rightDistFromCenter = Math.abs(rightAnkle.x - 0.5);
+  // The ankle CLOSER to the horizontal center is the front foot
+  return leftDistFromCenter < rightDistFromCenter ? 'left' : 'right';
+}
+
+/**
+ * Detect which leg is the standing leg for Tree Pose.
+ *
+ * The standing ankle stays on the ground (higher y value in image-space,
+ * since y=0 is the top). Once the user lifts one foot toward the inner
+ * thigh, that ankle's y will be significantly lower (higher in the frame).
+ * The ankle with the HIGHER y value is therefore on the ground.
+ */
+function detectStandingLeg(keypoints: Keypoint[]): 'left' | 'right' {
+  const leftAnkle = getKeypoint(keypoints, 'left_ankle');
+  const rightAnkle = getKeypoint(keypoints, 'right_ankle');
+  if (!leftAnkle || !rightAnkle) return 'left'; // fallback to default rule set
+  // Higher y = lower on screen = ground-level = standing ankle
+  return leftAnkle.y > rightAnkle.y ? 'left' : 'right';
+}
+
+/**
+ * Build a Warrior II rule set for the detected lead leg.
+ * When lead === 'left' the existing warriorIIRules are returned unchanged.
+ * When lead === 'right' all left/right joints are swapped.
+ */
+function buildWarriorIIRules(lead: 'left' | 'right'): PoseRuleSet {
+  return lead === 'left' ? warriorIIRules : mirrorRuleSet(warriorIIRules);
+}
+
+/**
+ * Build a Tree Pose rule set for the detected standing leg.
+ * When standing === 'left' the existing treePoseRules are returned unchanged.
+ * When standing === 'right' all left/right joints are swapped.
+ */
+function buildTreePoseRules(standing: 'left' | 'right'): PoseRuleSet {
+  return standing === 'left' ? treePoseRules : mirrorRuleSet(treePoseRules);
+}
+
 function getZone(deviation: number, greenZone: number, yellowZone: number): 'green' | 'yellow' | 'red' {
   if (deviation <= greenZone) return 'green';
   if (deviation <= yellowZone) return 'yellow';
@@ -523,7 +617,18 @@ export function evaluatePose(
   includeDebug: boolean = false
 ): PoseEvaluation {
   const normalizedName = poseName.toLowerCase().replace(/\s+/g, '_');
-  const rules = poseRuleMap[normalizedName] || defaultRules;
+  const baseRules = poseRuleMap[normalizedName] || defaultRules;
+
+  // Dynamically substitute rules based on detected body orientation so that
+  // both left-lead and right-lead stances score correctly.
+  let rules = baseRules;
+  if (['warrior_ii', 'virabhadrasana_ii'].includes(normalizedName)) {
+    const lead = detectLeadLeg(keypoints);
+    rules = buildWarriorIIRules(lead);
+  } else if (['tree_pose', 'tree', 'vrksasana'].includes(normalizedName)) {
+    const standing = detectStandingLeg(keypoints);
+    rules = buildTreePoseRules(standing);
+  }
 
   const feedback: PoseFeedback[] = [];
   const angleChecks: AngleCheckResult[] = [];
@@ -562,7 +667,7 @@ export function evaluatePose(
         keypointConfidences: keypoints.map(kp => ({ name: kp.name, confidence: kp.confidence })),
         phase: 'setup',
         holdSeconds: 0,
-        scoreBreakdown: { angleScore: 0, alignmentScore: 0, stabilityScore: 0, weights: { angle: 0.4, alignment: 0.35, stability: 0.25 } },
+        scoreBreakdown: { angleScore: 0, alignmentScore: 0, stabilityScore: 0, weights: { angle: 0.45, alignment: 0.35, stability: 0.2 } },
       } : undefined,
     };
   }
@@ -716,8 +821,8 @@ export function evaluatePose(
 
     if (movementCount > 0) {
       const avgMovement = totalMovement / movementCount;
-      // More lenient stability: 0.005 = full stability, 0.05 = no stability
-      stabilityScore = Math.max(0, 100 - avgMovement * 2000);
+      // More lenient stability: 0.005 = full stability, ~0.067 = no stability
+      stabilityScore = Math.max(0, 100 - avgMovement * 1500);
     }
   }
 

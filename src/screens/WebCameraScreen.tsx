@@ -28,6 +28,10 @@ export default function WebCameraScreen({ navigation, route }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | undefined>(undefined);
+  const lastFrameTimeRef = useRef<number>(0);
+  // Cap inference to ~15 fps so MoveNet has time to complete each call
+  // before the next frame is submitted (~67 ms between frames).
+  const FRAME_MIN_INTERVAL_MS = 67;
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -113,38 +117,45 @@ export default function WebCameraScreen({ navigation, route }: Props) {
     };
   }, []);
 
-  // Detection loop
+  // Detection loop — uses requestAnimationFrame, throttled to ~15 fps
+  // to avoid queuing MoveNet inference calls faster than they can complete.
   const startDetection = useCallback(() => {
-    const detect = async () => {
+    const detect = (timestamp: number) => {
+      // Schedule next frame first so the loop continues even if we skip processing
+      animationFrameRef.current = requestAnimationFrame(detect);
+
+      // Throttle: only run inference if enough time has elapsed
+      if (timestamp - lastFrameTimeRef.current < FRAME_MIN_INTERVAL_MS) {
+        return;
+      }
+      lastFrameTimeRef.current = timestamp;
+
       if (!videoRef.current || !isDetectorReady()) {
-        animationFrameRef.current = requestAnimationFrame(detect);
         return;
       }
 
-      try {
-        // Detect pose
-        const detectedPose = await detectPoseFromVideo(videoRef.current);
+      // Run inference asynchronously without blocking the RAF callback
+      detectPoseFromVideo(videoRef.current)
+        .then((detectedPose) => {
+          if (detectedPose) {
+            setPoseData(detectedPose);
 
-        if (detectedPose) {
-          setPoseData(detectedPose);
+            // Evaluate pose
+            const evaluation = evaluatePose(detectedPose.keypoints, poseName);
+            setScore(evaluation.overallScore);
 
-          // Evaluate pose
-          const evaluation = evaluatePose(detectedPose.keypoints, poseName);
-          setScore(evaluation.overallScore);
-
-          // Draw skeleton on canvas
-          if (canvasRef.current && videoRef.current) {
-            drawSkeleton(detectedPose, videoRef.current, canvasRef.current);
+            // Draw skeleton on canvas
+            if (canvasRef.current && videoRef.current) {
+              drawSkeleton(detectedPose, videoRef.current, canvasRef.current);
+            }
           }
-        }
-      } catch (err) {
-        console.error('[WebCamera] Detection error:', err);
-      }
-
-      animationFrameRef.current = requestAnimationFrame(detect);
+        })
+        .catch((err) => {
+          console.error('[WebCamera] Detection error:', err);
+        });
     };
 
-    detect();
+    animationFrameRef.current = requestAnimationFrame(detect);
   }, [poseName]);
 
   // Draw skeleton overlay

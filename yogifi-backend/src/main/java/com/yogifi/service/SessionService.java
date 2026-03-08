@@ -105,6 +105,8 @@ public class SessionService {
                     .severity(PoseMistake.Severity.valueOf(dto.getSeverity()))
                     .occurrenceTimeSeconds(dto.getOccurrenceTimeSeconds())
                     .durationSeconds(dto.getDurationSeconds())
+                    .currentAngle(dto.getCurrentAngle())
+                    .targetAngle(dto.getTargetAngle())
                     .build())
                 .collect(Collectors.toList());
             session.getMistakes().addAll(mistakes);

@@ -1,9 +1,22 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import gsap from 'gsap';
-import { useGSAP } from '@gsap/react';
-import { ArrowRight, Loader2, Check, Leaf } from 'lucide-react';
+import { ArrowRight, Loader2, Check } from 'lucide-react';
 import api, { setAccessToken } from '../lib/api';
+import BrutalistCursor from '../components/BrutalistCursor';
+
+const PassReq = ({ ok, label }: { ok: boolean; label: string }) => (
+  <div style={{
+    display: 'flex', alignItems: 'center', gap: '0.5rem',
+    fontSize: '0.75rem', color: ok ? 'var(--ink)' : 'var(--muted)',
+    transition: 'color 0.2s', fontWeight: 300,
+  }}>
+    {ok
+      ? <Check size={11} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+      : <span style={{ width: 11, height: 11, border: '1px solid var(--line)', display: 'inline-block', flexShrink: 0 }} />
+    }
+    {label}
+  </div>
+);
 
 const Signup: React.FC = () => {
   const [name,     setName]     = useState('');
@@ -12,28 +25,14 @@ const Signup: React.FC = () => {
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState('');
 
-  const [hasLength,  setHasLength]  = useState(false);
-  const [hasNumber,  setHasNumber]  = useState(false);
-  const [hasSpecial, setHasSpecial] = useState(false);
+  const hasLength  = password.length >= 8;
+  const hasNumber  = /\d/.test(password);
+  const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  const isPasswordValid = hasLength && hasNumber && hasSpecial;
 
-  const navigate     = useNavigate();
-  const containerRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    setHasLength(password.length >= 8);
-    setHasNumber(/\d/.test(password));
-    setHasSpecial(/[!@#$%^&*(),.?":{}|<>]/.test(password));
-  }, [password]);
-
-  useGSAP(() => {
-    const ctx = gsap.context(() => {
-      gsap.from('.auth-elem', { y: 28, opacity: 0, stagger: 0.1, ease: 'power3.out', duration: 1, delay: 0.2 });
-      gsap.from('.auth-image', { scale: 1.05, opacity: 0, duration: 1.6, ease: 'power2.out' });
-    }, containerRef);
-    return () => ctx.revert();
-  }, []);
-
-  const handleSignup = async (e: React.FormEvent) => {
+  const handleSignup = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!hasLength || !hasNumber || !hasSpecial) { setError('Please meet all password requirements.'); return; }
     setLoading(true);
@@ -52,120 +51,187 @@ const Signup: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const isPasswordValid = hasLength && hasNumber && hasSpecial;
-
-  const PassReq = ({ ok, label }: { ok: boolean; label: string }) => (
-    <div className={`flex items-center gap-2 text-xs transition-colors ${ok ? 'text-forest dark:text-sage' : 'text-charcoal/35 dark:text-warmwhite/25'}`}>
-      {ok
-        ? <Check size={12} />
-        : <div className="w-1 h-1 rounded-full bg-charcoal/25 dark:bg-warmwhite/20 mx-1" />
-      }
-      {label}
-    </div>
-  );
+  }, [hasLength, hasNumber, hasSpecial, name, email, password, navigate]);
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-warmwhite dark:bg-forest-dark flex font-sans">
+    <>
+      <BrutalistCursor />
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex' }}>
 
-      {/* Left — form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 md:p-16 relative order-2 lg:order-1">
-        <Link to="/" className="absolute top-8 left-8 lg:hidden flex items-center gap-2">
-          <Leaf size={16} className="text-forest dark:text-gold" />
-          <span className="font-outfit font-bold text-lg text-forest dark:text-warmwhite">Yogifi AI</span>
-        </Link>
+        {/* Left — form */}
+        <div
+          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3rem 2rem' }}
+          className="order-2 lg:order-1"
+        >
+          <div style={{ width: '100%', maxWidth: '400px' }}>
 
-        <div className="w-full max-w-md">
-          <div className="auth-elem mb-10">
-            <div className="section-label mb-5 !bg-gold/8 !text-gold">Get started free</div>
-            <h1 className="font-serif italic text-4xl sm:text-5xl text-forest dark:text-warmwhite mb-3 leading-tight">
-              Join the practice.
-            </h1>
-            <p className="font-outfit text-charcoal/50 dark:text-warmwhite/45">
-              Create your account and start your AI-guided journey.
+            {/* Mobile logo */}
+            <Link
+              to="/"
+              className="lg:hidden"
+              style={{ display: 'block', fontFamily: '"Playfair Display", serif', fontStyle: 'italic', fontSize: '1.3rem', color: 'var(--ink)', textDecoration: 'none', marginBottom: '2.5rem' }}
+            >
+              Yogifi AI
+            </Link>
+
+            <p className="ck-label" style={{ marginBottom: '0.75rem' }}>Get started free</p>
+
+            {/* Brutalist heading */}
+            <div style={{ marginBottom: '2.5rem', lineHeight: 1.05 }}>
+              <span style={{ fontFamily: '"Outfit", sans-serif', fontWeight: 700, fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)', color: 'var(--ink)', display: 'block' }}>
+                Create your
+              </span>
+              <span style={{ fontFamily: '"Reenie Beanie", cursive', fontWeight: 400, fontSize: 'clamp(2.4rem, 5vw, 3.2rem)', color: 'var(--accent)', display: 'block', lineHeight: 0.9 }}>
+                account.
+              </span>
+            </div>
+
+            <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div>
+                <label className="ck-label">Full name</label>
+                <input
+                  type="text" required value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="Jane Doe" className="ck-input"
+                />
+              </div>
+
+              <div>
+                <label className="ck-label">Email address</label>
+                <input
+                  type="email" required value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="hello@example.com" className="ck-input"
+                />
+              </div>
+
+              <div>
+                <label className="ck-label">Password</label>
+                <input
+                  type="password" required value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••" className="ck-input"
+                />
+                {password.length > 0 && (
+                  <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <PassReq ok={hasLength}  label="8+ characters" />
+                    <PassReq ok={hasNumber}  label="At least one number" />
+                    <PassReq ok={hasSpecial} label="At least one special character" />
+                  </div>
+                )}
+              </div>
+
+              {error && (
+                <div style={{
+                  background: 'var(--acid)', border: '2px solid var(--brutal)',
+                  boxShadow: '4px 4px 0 0 var(--brutal)', padding: '0.75rem 1rem',
+                  color: 'var(--brutal)', fontSize: '0.8rem', fontWeight: 600,
+                  lineHeight: 1.5, fontFamily: '"Space Grotesk", sans-serif',
+                }}>
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading || !isPasswordValid}
+                className="btn-brutalist"
+                style={{ width: '100%', justifyContent: 'center', padding: '0.875rem 1.5rem', opacity: (loading || !isPasswordValid) ? 0.45 : 1 }}
+              >
+                {loading
+                  ? <Loader2 size={18} className="animate-spin" />
+                  : <><span>Create account</span><ArrowRight size={16} /></>
+                }
+              </button>
+            </form>
+
+            {/* OR divider */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '1.75rem 0' }}>
+              <div style={{ flex: 1, height: '1px', background: 'var(--line)' }} />
+              <span style={{ fontFamily: '"Space Grotesk", sans-serif', fontSize: '0.7rem', letterSpacing: '0.1em', color: 'var(--muted)', textTransform: 'uppercase' }}>or</span>
+              <div style={{ flex: 1, height: '1px', background: 'var(--line)' }} />
+            </div>
+
+            {/* SSO buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {[
+                { label: 'Continue with Google', icon: 'G' },
+                { label: 'Continue with Apple',  icon: '⌘' },
+              ].map(({ label, icon }) => (
+                <button
+                  key={label}
+                  type="button"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem',
+                    width: '100%', padding: '0.75rem 1.5rem',
+                    background: 'var(--bg)', border: '2px solid var(--brutal)',
+                    boxShadow: '4px 4px 0 0 var(--brutal)',
+                    cursor: 'pointer', fontSize: '0.875rem', fontWeight: 400, color: 'var(--ink)',
+                    transition: 'transform 0.1s, box-shadow 0.1s',
+                    fontFamily: '"Space Grotesk", sans-serif',
+                  }}
+                  onMouseEnter={e => { const el = e.currentTarget; el.style.transform = 'translate(4px,4px)'; el.style.boxShadow = 'none'; }}
+                  onMouseLeave={e => { const el = e.currentTarget; el.style.transform = ''; el.style.boxShadow = '4px 4px 0 0 var(--brutal)'; }}
+                >
+                  <span style={{ fontWeight: 700, fontSize: '1rem' }}>{icon}</span>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <p style={{ marginTop: '2rem', fontSize: '0.875rem', color: 'var(--muted)', fontWeight: 300 }}>
+              Already have an account?{' '}
+              <Link to="/login" style={{ color: 'var(--ink)', textDecoration: 'underline', fontWeight: 400 }}>
+                Log in
+              </Link>
+            </p>
+          </div>
+        </div>
+
+        {/* Right — dark editorial panel */}
+        <div
+          className="hidden lg:flex lg:w-1/2 flex-col justify-between order-1 lg:order-2"
+          style={{ background: 'var(--brutal)', color: 'var(--bg)', padding: '4rem', position: 'relative', overflow: 'hidden' }}
+        >
+          {/* Acid sticker badge */}
+          <div aria-hidden="true" style={{
+            position: 'absolute', top: '3.5rem', left: '3rem',
+            background: 'var(--acid)', border: '2px solid var(--bg)',
+            boxShadow: '4px 4px 0 0 var(--bg)',
+            transform: 'rotate(2deg)', padding: '0.4rem 0.9rem',
+          }}>
+            <span style={{ fontFamily: '"Space Grotesk", sans-serif', fontWeight: 700, fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--brutal)' }}>
+              Beta ✦
+            </span>
+          </div>
+
+          <Link
+            to="/"
+            style={{ fontFamily: '"Playfair Display", serif', fontStyle: 'italic', fontSize: '1.4rem', color: 'var(--bg)', textDecoration: 'none', alignSelf: 'flex-end' }}
+          >
+            Yogifi AI
+          </Link>
+
+          <div>
+            <p style={{
+              fontFamily: '"Playfair Display", serif', fontStyle: 'italic',
+              fontSize: 'clamp(2.2rem, 4vw, 3.5rem)', lineHeight: 1.1,
+              color: 'var(--bg)', marginBottom: '1.5rem',
+            }}>
+              Your practice,<br />
+              <em style={{ color: 'var(--accent)' }}>guided by AI.</em>
+            </p>
+            <p style={{ color: 'rgba(247,244,238,0.45)', fontWeight: 300, fontSize: '0.9rem', lineHeight: 1.6 }}>
+              Join thousands of practitioners improving their form with real-time AI coaching.
             </p>
           </div>
 
-          <form onSubmit={handleSignup} className="flex flex-col gap-5">
-            <div className="auth-elem flex flex-col gap-2">
-              <label className="font-mono text-[10px] tracking-widest text-charcoal/45 dark:text-warmwhite/35 uppercase">Full Name</label>
-              <input
-                type="text" required value={name} onChange={e => setName(e.target.value)} placeholder="Jane Doe"
-                className="bg-transparent border-b-2 border-charcoal/15 dark:border-warmwhite/12 pb-3 text-lg font-outfit outline-none
-                  focus:border-forest dark:focus:border-gold transition-colors
-                  text-charcoal dark:text-warmwhite placeholder:text-charcoal/20 dark:placeholder:text-warmwhite/18"
-              />
-            </div>
-
-            <div className="auth-elem flex flex-col gap-2">
-              <label className="font-mono text-[10px] tracking-widest text-charcoal/45 dark:text-warmwhite/35 uppercase">Email address</label>
-              <input
-                type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="hello@example.com"
-                className="bg-transparent border-b-2 border-charcoal/15 dark:border-warmwhite/12 pb-3 text-lg font-outfit outline-none
-                  focus:border-forest dark:focus:border-gold transition-colors
-                  text-charcoal dark:text-warmwhite placeholder:text-charcoal/20 dark:placeholder:text-warmwhite/18"
-              />
-            </div>
-
-            <div className="auth-elem flex flex-col gap-2">
-              <label className="font-mono text-[10px] tracking-widest text-charcoal/45 dark:text-warmwhite/35 uppercase">Password</label>
-              <input
-                type="password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••"
-                className="bg-transparent border-b-2 border-charcoal/15 dark:border-warmwhite/12 pb-3 text-lg font-outfit outline-none
-                  focus:border-forest dark:focus:border-gold transition-colors
-                  text-charcoal dark:text-warmwhite placeholder:text-charcoal/20 dark:placeholder:text-warmwhite/18"
-              />
-              <div className="mt-2 flex flex-col gap-1.5 font-sans">
-                <PassReq ok={hasLength}  label="8+ characters"              />
-                <PassReq ok={hasNumber}  label="At least one number"        />
-                <PassReq ok={hasSpecial} label="At least one special character" />
-              </div>
-            </div>
-
-            {error && (
-              <div className="auth-elem text-red-600 dark:text-red-400 text-sm font-sans bg-red-50 dark:bg-red-900/20 p-4 rounded-2xl border border-red-200 dark:border-red-900/40">
-                {error}
-              </div>
-            )}
-
-            <div className="auth-elem mt-4">
-              <button
-                type="submit" disabled={loading || !isPasswordValid}
-                className="btn-primary w-full !py-4 text-base disabled:opacity-45 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
-              >
-                {loading
-                  ? <Loader2 className="w-5 h-5 animate-spin" />
-                  : <><span>Create Account</span><ArrowRight size={18} /></>
-                }
-              </button>
-            </div>
-          </form>
-
-          <div className="auth-elem mt-10 text-center text-sm text-charcoal/45 dark:text-warmwhite/30 font-outfit">
-            Already have an account?{' '}
-            <Link to="/login" className="text-forest dark:text-gold font-semibold hover:underline ml-1">Log in</Link>
-          </div>
+          <p style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: '0.65rem', letterSpacing: '0.1em', color: 'rgba(247,244,238,0.2)', textTransform: 'uppercase' }}>
+            Beta · Limited access
+          </p>
         </div>
       </div>
-
-      {/* Right — image */}
-      <div className="hidden lg:block lg:w-1/2 relative overflow-hidden order-1 lg:order-2">
-        <div className="absolute inset-0 z-10" style={{ background: 'linear-gradient(to bottom, rgba(15,36,25,0.85) 0%, rgba(27,67,50,0.35) 50%, transparent 100%)' }} />
-        <img
-          src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=1200&q=85&auto=format&fit=crop"
-          alt="Yoga practice"
-          className="auth-image absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute top-12 right-12 z-20 text-right">
-          <Link to="/" className="flex items-center gap-2 justify-end mb-2">
-            <Leaf size={16} className="text-gold" />
-            <span className="font-outfit font-bold text-xl text-warmwhite tracking-tight">Yogifi AI</span>
-          </Link>
-          <p className="font-mono text-warmwhite/30 text-[10px] tracking-widest">BETA · LIMITED ACCESS</p>
-        </div>
-      </div>
-    </div>
+    </>
   );
 };
 

@@ -66,5 +66,7 @@ public class SessionEndRequest {
         private String severity; // LOW, MEDIUM, HIGH, CRITICAL
         private Double occurrenceTimeSeconds;
         private Double durationSeconds;
+        private Double currentAngle; // measured joint angle in degrees (nullable)
+        private Double targetAngle;  // target joint angle for correct pose (nullable)
     }
 }

@@ -1,53 +1,78 @@
+/**
+ * DashboardOverview — Wellness Brutalism dashboard home.
+ *
+ * Layout:
+ *   - Header greeting: Outfit 48px + Reenie Beanie on username
+ *   - Stats bento: 3-col grid — large streak card (#09090B bg, acid text),
+ *     accuracy + sessions cards with editorial --line borders
+ *   - Weekly bar chart: #09090B bars, acid active bar, no border-radius
+ *   - AI insight strip: coral left-border + hard shadow
+ *   - Recent sessions: card-brutalist rows with hover translate
+ *
+ * Clauaskee rules: no border-radius on any element.
+ */
 import React from 'react';
-import { Play, Activity, TrendingUp, Flame, ArrowRight } from 'lucide-react';
+import { Play, TrendingUp, Flame, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-const StatCard = ({ label, value, trend, highlight }: { label: string; value: string; trend: string; highlight?: boolean }) => (
-  <div className={`p-6 rounded-[1.75rem] border flex flex-col gap-4 relative overflow-hidden transition-all duration-300 hover:-translate-y-0.5
-    ${highlight
-      ? 'bg-forest border-gold/20 shadow-md'
-      : 'bg-warmwhite dark:bg-forest/15 border-charcoal/8 dark:border-warmwhite/8 hover:border-forest/20 dark:hover:border-warmwhite/15'
-    }`}
-  >
-    {highlight && <div className="absolute top-0 right-0 w-36 h-36 bg-gold/8 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />}
-    <span className={`font-mono text-xs tracking-widest uppercase ${highlight ? 'text-warmwhite/50' : 'text-charcoal/40 dark:text-warmwhite/35'}`}>{label}</span>
-    <div className="flex items-end justify-between">
-      <span className={`font-sans font-bold text-4xl leading-none ${highlight ? 'text-warmwhite' : 'text-charcoal dark:text-warmwhite'}`}>{value}</span>
-      <span className={`font-outfit text-sm font-medium ${highlight ? 'text-gold' : 'text-sage dark:text-sage'}`}>{trend}</span>
-    </div>
-  </div>
-);
+/* ── Weekly bar data ────────────────────────────────────────────────── */
+const WEEK_BARS = [
+  { day: 'Mo', val: 88, active: false },
+  { day: 'Tu', val: 92, active: false },
+  { day: 'We', val: 90, active: false },
+  { day: 'Th', val: 96, active: true  },
+  { day: 'Fr', val: 0,  active: false },
+  { day: 'Sa', val: 0,  active: false },
+  { day: 'Su', val: 0,  active: false },
+];
 
-const SessionRow = ({ date, title, duration, score }: { date: string; title: string; duration: string; score: string }) => {
+/* ── Session row — card-brutalist with hover translate ──────────────── */
+const SessionRow = ({
+  date, title, duration, score,
+}: { date: string; title: string; duration: string; score: string }) => {
   const scoreNum = parseInt(score);
-  const scoreColor = scoreNum >= 90 ? 'text-sage' : scoreNum >= 75 ? 'text-gold' : 'text-clay';
+  const scoreColor = scoreNum >= 90 ? 'var(--ink)' : scoreNum >= 75 ? 'var(--muted)' : 'var(--accent)';
+
   return (
     <Link
       to="/session/summary"
-      className="flex flex-col md:flex-row md:items-center justify-between p-5 rounded-2xl
-        bg-warmwhite dark:bg-forest/10 border border-charcoal/6 dark:border-warmwhite/6
-        hover:border-forest/25 dark:hover:border-warmwhite/15 hover:-translate-y-0.5
-        transition-all duration-200 gap-4 group"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '1rem 1.25rem',
+        textDecoration: 'none',
+        color: 'var(--ink)',
+        gap: '1rem',
+        background: 'var(--bg)',
+        border: '2px solid var(--brutal)',
+        boxShadow: '4px 4px 0 0 var(--brutal)',
+        transition: 'transform 0.1s ease, box-shadow 0.1s ease',
+        willChange: 'transform',
+      }}
+      onMouseEnter={e => {
+        (e.currentTarget as HTMLElement).style.transform = 'translate(4px, 4px)';
+        (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 0 var(--brutal)';
+      }}
+      onMouseLeave={e => {
+        (e.currentTarget as HTMLElement).style.transform = '';
+        (e.currentTarget as HTMLElement).style.boxShadow = '4px 4px 0 0 var(--brutal)';
+      }}
     >
-      <div className="flex items-center gap-5">
-        <div className="w-11 h-11 rounded-full bg-forest/8 dark:bg-warmwhite/8 text-forest dark:text-sage flex items-center justify-center shrink-0 group-hover:bg-forest group-hover:text-warmwhite dark:group-hover:bg-warmwhite/15 transition-colors">
-          <Activity size={18} />
-        </div>
-        <div>
-          <h4 className="font-sans font-semibold text-charcoal dark:text-warmwhite text-base">{title}</h4>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-charcoal/35 dark:text-warmwhite/30 mt-0.5">{date}</p>
-        </div>
+      <div style={{ flex: 1 }}>
+        <p style={{ fontWeight: 400, fontSize: '0.9rem', marginBottom: '0.2rem' }}>{title}</p>
+        <p className="ck-label" style={{ marginBottom: 0 }}>{date}</p>
       </div>
-      <div className="flex items-center gap-8 pl-16 md:pl-0">
-        <div className="flex flex-col md:items-end">
-          <span className="font-mono text-[10px] text-charcoal/30 dark:text-warmwhite/25 uppercase tracking-widest mb-0.5">Duration</span>
-          <span className="font-outfit text-sm text-charcoal dark:text-warmwhite">{duration}</span>
+      <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', flexShrink: 0 }}>
+        <div style={{ textAlign: 'right' }}>
+          <p className="ck-label" style={{ marginBottom: '0.1rem' }}>Duration</p>
+          <p style={{ fontSize: '0.85rem', fontWeight: 300 }}>{duration}</p>
         </div>
-        <div className="flex flex-col md:items-end">
-          <span className="font-mono text-[10px] text-charcoal/30 dark:text-warmwhite/25 uppercase tracking-widest mb-0.5">Score</span>
-          <span className={`font-outfit font-semibold text-sm ${scoreColor}`}>{score}</span>
+        <div style={{ textAlign: 'right' }}>
+          <p className="ck-label" style={{ marginBottom: '0.1rem' }}>Score</p>
+          <p style={{ fontSize: '0.85rem', fontWeight: 500, color: scoreColor }}>{score}</p>
         </div>
-        <ArrowRight size={16} className="hidden md:block text-charcoal/20 dark:text-warmwhite/15 group-hover:text-forest dark:group-hover:text-gold group-hover:translate-x-1 transition-all" />
+        <ArrowRight size={14} style={{ color: 'var(--line)' }} />
       </div>
     </Link>
   );
@@ -57,59 +82,118 @@ const DashboardOverview: React.FC = () => {
   const userName = 'Alex';
 
   return (
-    <div className="animate-fade-in max-w-5xl">
+    <div>
 
-      {/* Header */}
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+      {/* ── Header greeting ────────────────────────────────────────────── */}
+      <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '1.5rem', marginBottom: '3rem', flexWrap: 'wrap' }}>
         <div>
-          <div className="section-label mb-3 !bg-gold/8 !text-gold">
-            <Flame size={12} /> Today
+          <p className="ck-label" style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Flame size={11} /> Today
+          </p>
+          {/* Outfit display heading + Reenie Beanie on name */}
+          <div style={{ lineHeight: 1.0, marginBottom: '0.5rem' }}>
+            <span style={{ fontFamily: '"Outfit", sans-serif', fontWeight: 700, fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)', color: 'var(--ink)', display: 'block' }}>
+              Welcome back,
+            </span>
+            <span style={{ fontFamily: '"Reenie Beanie", cursive', fontWeight: 400, fontSize: 'clamp(2.5rem, 5vw, 3.75rem)', color: 'var(--accent)', display: 'block', lineHeight: 0.85 }}>
+              {userName}.
+            </span>
           </div>
-          <h1 className="font-serif italic text-4xl lg:text-5xl text-forest dark:text-warmwhite leading-tight">
-            Welcome back, {userName}.
-          </h1>
-          <p className="font-outfit text-charcoal/45 dark:text-warmwhite/40 mt-2 text-sm">
+          <p style={{ color: 'var(--muted)', fontWeight: 300, fontSize: '0.875rem' }}>
             You're on a 6-day streak — keep it going!
           </p>
         </div>
-        <Link
-          to="/session"
-          className="btn-primary !px-7 !py-3.5 text-sm shrink-0 self-start md:self-auto"
-        >
-          <Play size={15} className="fill-current" />
+
+        {/* Quick start — btn-brutalist */}
+        <Link to="/session" className="btn-brutalist" style={{ textDecoration: 'none' }}>
+          <Play size={13} style={{ fill: 'currentColor' }} />
           <span>Quick Start</span>
         </Link>
       </header>
 
-      {/* KPI grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-        <StatCard label="Avg. Accuracy"       value="94.2%" trend="+2.4% vs last wk" />
-        <StatCard label="Sessions Completed"  value="24"    trend="On track" />
-        <StatCard label="Current Streak"      value="6 Days" trend="Personal Best 🏆" highlight />
-      </div>
+      {/* ── Stats bento grid ────────────────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2px', background: 'var(--line)', marginBottom: '2.5rem' }}>
 
-      {/* Weekly mini-chart placeholder */}
-      <div className="bg-warmwhite dark:bg-forest/10 border border-charcoal/6 dark:border-warmwhite/6 rounded-[1.75rem] p-6 mb-6 flex items-center gap-4">
-        <TrendingUp size={18} className="text-sage shrink-0" />
-        <div className="flex-1">
-          <p className="font-sans font-semibold text-sm text-charcoal dark:text-warmwhite">This week you've improved accuracy by</p>
-          <p className="font-mono text-xs text-charcoal/40 dark:text-warmwhite/30 mt-0.5">Across 4 sessions — Monday through Thursday</p>
+        {/* Accuracy */}
+        <div style={{ padding: '1.75rem', background: 'var(--bg)', borderTop: '2px solid var(--line)' }}>
+          <p className="ck-label" style={{ marginBottom: '1rem' }}>Avg. Accuracy</p>
+          <p style={{ fontFamily: '"Playfair Display", serif', fontStyle: 'italic', fontSize: 'clamp(2rem, 4vw, 3rem)', lineHeight: 1, marginBottom: '0.5rem', color: 'var(--ink)' }}>
+            94.2%
+          </p>
+          <p style={{ fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 300 }}>+2.4% vs last week</p>
         </div>
-        <span className="font-sans font-bold text-2xl text-gold">+8°</span>
+
+        {/* Sessions */}
+        <div style={{ padding: '1.75rem', background: 'var(--bg)', borderTop: '2px solid var(--line)' }}>
+          <p className="ck-label" style={{ marginBottom: '1rem' }}>Sessions Completed</p>
+          <p style={{ fontFamily: '"Playfair Display", serif', fontStyle: 'italic', fontSize: 'clamp(2rem, 4vw, 3rem)', lineHeight: 1, marginBottom: '0.5rem', color: 'var(--ink)' }}>
+            24
+          </p>
+          <p style={{ fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 300 }}>On track</p>
+        </div>
+
+        {/* Streak — dark card with acid text (brutalist injection) */}
+        <div style={{ padding: '1.75rem', background: 'var(--brutal)', borderTop: '2px solid var(--brutal)', position: 'relative' }}>
+          {/* Acid sticker badge */}
+          <div aria-hidden="true" style={{ position: 'absolute', top: '-0.85rem', right: '1rem', background: 'var(--acid)', border: '1px solid var(--brutal)', padding: '0.15rem 0.6rem', transform: 'rotate(-1.5deg)' }}>
+            <span style={{ fontFamily: '"Space Grotesk", sans-serif', fontWeight: 700, fontSize: '0.58rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--brutal)' }}>
+              Personal Best
+            </span>
+          </div>
+          <p className="ck-label" style={{ marginBottom: '1rem', color: 'rgba(210,232,35,0.5)' }}>Current Streak</p>
+          <p style={{ fontFamily: '"Outfit", sans-serif', fontWeight: 700, fontSize: 'clamp(2rem, 4vw, 3rem)', lineHeight: 1, marginBottom: '0.5rem', color: 'var(--acid)' }}>
+            6 days
+          </p>
+          <p style={{ fontSize: '0.8rem', color: 'rgba(210,232,35,0.45)', fontWeight: 300 }}>Keep the streak alive</p>
+        </div>
       </div>
 
-      {/* Recent sessions */}
-      <div className="bg-warmwhite dark:bg-forest/10 border border-charcoal/6 dark:border-warmwhite/6 rounded-[1.75rem] p-6 md:p-8">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="font-serif italic text-xl text-charcoal dark:text-warmwhite">Recent Sessions</h2>
-          <button className="font-mono text-xs tracking-widest text-forest/60 dark:text-warmwhite/40 hover:text-forest dark:hover:text-gold transition-colors uppercase flex items-center gap-1">
-            View all <ArrowRight size={12} />
+      {/* ── Weekly accuracy chart — brutalist bars ───────────────────────── */}
+      <div style={{ padding: '1.5rem', border: '2px solid var(--brutal)', boxShadow: '4px 4px 0 0 var(--brutal)', marginBottom: '2.5rem', background: 'var(--bg)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <TrendingUp size={15} style={{ color: 'var(--muted)' }} />
+            <p style={{ fontFamily: '"Space Grotesk", sans-serif', fontWeight: 700, fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ink)' }}>
+              Weekly Accuracy
+            </p>
+          </div>
+          <span style={{ fontFamily: '"Playfair Display", serif', fontStyle: 'italic', fontSize: '1.5rem', color: 'var(--accent)' }}>+8°</span>
+        </div>
+
+        {/* Bars — no border-radius, acid for active day */}
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px', height: '72px' }}>
+          {WEEK_BARS.map(({ day, val, active }) => (
+            <div key={day} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', height: '100%', justifyContent: 'flex-end' }}>
+              <div style={{
+                width: '100%',
+                height: val ? `${(val / 100) * 56}px` : '3px',
+                background: active ? 'var(--acid)' : val ? 'var(--brutal)' : 'var(--line)',
+                border: val ? `1px solid ${active ? 'var(--brutal)' : 'var(--brutal)'}` : 'none',
+                transition: 'height 0.5s ease',
+              }} />
+              <span style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: '0.55rem', color: active ? 'var(--ink)' : 'var(--muted)', letterSpacing: '0.05em', fontWeight: active ? 700 : 400 }}>{day}</span>
+            </div>
+          ))}
+        </div>
+        <p style={{ marginTop: '0.75rem', color: 'var(--muted)', fontWeight: 300, fontSize: '0.8rem' }}>
+          Across 4 sessions — Monday through Thursday
+        </p>
+      </div>
+
+      {/* ── Recent sessions ──────────────────────────────────────────────── */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '0.75rem', borderBottom: '1px solid var(--line)', marginBottom: '1rem' }}>
+          <h2 style={{ fontFamily: '"Playfair Display", serif', fontStyle: 'italic', fontSize: '1.4rem', color: 'var(--ink)' }}>
+            Recent Sessions
+          </h2>
+          <button style={{ color: 'var(--muted)', fontSize: '0.75rem', fontWeight: 300, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+            View all <ArrowRight size={11} />
           </button>
         </div>
-        <div className="flex flex-col gap-3">
-          <SessionRow date="Today, 07:00 AM"       title="Morning Mobility Flow"   duration="25m" score="96%" />
-          <SessionRow date="Yesterday, 06:30 PM"   title="Hip Openers & Core"      duration="45m" score="92%" />
-          <SessionRow date="Oct 12, 07:15 AM"      title="Foundational Alignment"  duration="30m" score="88%" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <SessionRow date="Today, 07:00 AM"     title="Morning Mobility Flow"  duration="25m" score="96%" />
+          <SessionRow date="Yesterday, 06:30 PM" title="Hip Openers & Core"     duration="45m" score="92%" />
+          <SessionRow date="Oct 12, 07:15 AM"    title="Foundational Alignment" duration="30m" score="88%" />
         </div>
       </div>
     </div>
