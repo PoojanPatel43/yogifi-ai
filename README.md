@@ -1,327 +1,263 @@
-# Yogifi AI - Yoga Pose Correction App
+# Yogifi AI
 
-AI-powered yoga coaching app with real-time pose detection and correction.
-
----
-
-## PART A: AI MODEL RESEARCH & VALIDATION
-
-### Model Comparison Table
-
-| Model | Accuracy (AP) | FPS iPhone 12 | FPS Galaxy S21 | FPS Mid-range | Size (Original) | Size (Quantized) | Keypoints | Mobile Ready | RN Integration |
-|-------|---------------|---------------|----------------|---------------|-----------------|------------------|-----------|--------------|----------------|
-| **MediaPipe Pose Full** | ~75 AP | 30-45 | 30-40 | 20-30 | ~3 MB | ~1.5 MB | **33** | ✅ Excellent | ⭐⭐⭐⭐⭐ |
-| MediaPipe Pose Lite | ~70 AP | 45-60 | 40-50 | 25-35 | ~1.5 MB | ~0.8 MB | **33** | ✅ Excellent | ⭐⭐⭐⭐⭐ |
-| MoveNet Thunder | ~72 AP | 25-35 | 20-30 | 15-20 | ~6 MB | ~2 MB | 17 | ✅ Good | ⭐⭐⭐⭐ |
-| MoveNet Lightning | ~66 AP | 50-60 | 45-55 | 30-40 | ~3.5 MB | ~1 MB | 17 | ✅ Good | ⭐⭐⭐⭐ |
-| RTMPose-l | **~76 AP** | 15-25 | 12-20 | 8-15 | ~25 MB | ~7 MB | 17/133* | ⚠️ Complex | ⭐⭐ |
-| RTMPose-s | ~70 AP | 35-45 | 30-40 | 20-30 | ~5 MB | ~2 MB | 17/133* | ⚠️ Complex | ⭐⭐ |
-
-*RTMPose supports 17 keypoints (COCO format) or 133 keypoints (Whole-body) depending on model variant.
-
-### 🏆 RECOMMENDATION: MediaPipe Pose (Full)
-
-**Why MediaPipe Pose Full is BEST for Yogifi AI:**
-
-1. **33 Keypoints (Critical for Yoga)**
-   - Includes hands: wrist, pinky, index, thumb
-   - Includes feet: ankle, heel, foot_index
-   - Face landmarks for head alignment
-   - This is ESSENTIAL for yoga poses like Warrior, Tree, Downward Dog
-
-2. **3D Pose Estimation**
-   - Z-depth coordinates for form correction
-   - Can detect if arm is forward/backward relative to body
-   - Crucial for proper yoga alignment feedback
-
-3. **Performance**
-   - 30-45 FPS on iPhone 12 ✅ (meets your 30 FPS requirement)
-   - 30-40 FPS on Samsung Galaxy S21 ✅
-   - Only ~3 MB model size
-
-4. **React Native Integration (Best-in-class)**
-   - `react-native-mediapipe` library available
-   - Works with Expo Dev Client
-   - Official Google SDKs for iOS/Android
-
-5. **Production Ready**
-   - Used by Google Fit, YouTube, and major fitness apps
-   - Well-documented, stable API
-   - Active community support
-
-### Why NOT the Others?
-
-| Model | Issue for Yogifi AI |
-|-------|---------------------|
-| RTMPose-l | Highest accuracy but only 17 keypoints in COCO format. No dedicated RN library. |
-| RTMPose-s | Same 17-keypoint limitation. Complex ONNX setup for mobile. |
-| MoveNet Thunder | Only 17 keypoints - missing hand/foot details critical for yoga. |
-| MoveNet Lightning | Lower accuracy (66 AP) struggles with complex poses. 17 keypoints only. |
+Real-time yoga coaching app with live pose detection, AI feedback, and personalized plans.
 
 ---
 
-### Deployment Format Comparison
-
-| Feature | TensorFlow Lite | ONNX Runtime Mobile |
-|---------|----------------|---------------------|
-| React Native Support | ⭐⭐⭐⭐⭐ Excellent | ⭐⭐⭐ Good |
-| Expo Compatibility | Dev Client required | Dev Client required |
-| Model Availability | More pre-trained | Growing |
-| Documentation | Extensive | Growing |
-| MediaPipe Integration | Native (uses TFLite) | Requires conversion |
-| Community Support | Large | Medium |
-
-**Winner: TensorFlow Lite** (MediaPipe uses TFLite internally)
-
-### Recommended React Native Stack
+## Architecture
 
 ```
-react-native-vision-camera    # Camera access & frame processing
-react-native-mediapipe        # Pose detection (uses TFLite internally)
-expo-dev-client               # Required for native modules
-```
-
-⚠️ **CRITICAL:** You MUST use Expo Dev Client, NOT Expo Go. Expo Go does not support native ML modules.
-
----
-
-## Python Proof of Concept
-
-### Installation
-
-```bash
-# Navigate to project directory
-cd ~/Projects/yogifi-ai
-
-# Install dependencies
-pip install mediapipe opencv-python numpy
-```
-
-### Run the Demo
-
-```bash
-python pose_detection_poc.py
-```
-
-### Controls
-- **Q** - Quit the application
-- **S** - Save current frame as image
-- **L** - Toggle between skeleton and points-only view
-
-### What It Does
-1. Captures real-time webcam feed
-2. Detects pose using MediaPipe Pose (Full model)
-3. Draws skeleton overlay with 33 keypoints
-4. Displays FPS counter
-5. Prints keypoint coordinates with confidence scores every second
-6. Shows pose detection status (detected/not detected)
-
-### Expected Output
-```
-============================================================
-Frame 30 - Keypoint Coordinates
-============================================================
-ID   Name                        X        Y        Z   Conf
-------------------------------------------------------------
-0    nose                    0.5123   0.2341  -0.0234   0.99
-11   left_shoulder           0.6234   0.3456  -0.0123   0.98
-12   right_shoulder          0.3876   0.3421  -0.0156   0.97
-...
-============================================================
+Browser / React Native app
+        │
+        ▼
+Spring Boot API  (port 8080)  ←── JWT auth, sessions, AI plans
+        │
+        ▼
+Python Pose Service  (port 8001)  ←── BlazePose + TFLite classifier
+        │
+        ▼
+PostgreSQL  (port 5433 via Docker)
 ```
 
 ---
 
-## Mobile Conversion Steps
+## Tech Stack
 
-### Step 1: MediaPipe is Already Optimized
-
-MediaPipe Pose models are **already optimized for mobile**. No conversion needed!
-
-The `react-native-mediapipe` library includes pre-built mobile-optimized models.
-
-### Step 2: If You Need Custom Model (Optional)
-
-For TFLite conversion (if using custom trained model):
-
-```bash
-# Install conversion tools
-pip install tensorflow tf2onnx
-
-# Convert to TFLite with INT8 quantization
-import tensorflow as tf
-
-# Load model
-model = tf.keras.models.load_model('your_model.h5')
-
-# Convert with quantization
-converter = tf.lite.TFLiteConverter.from_keras_model(model)
-converter.optimizations = [tf.lite.Optimize.DEFAULT]
-converter.target_spec.supported_types = [tf.int8]
-
-# Representative dataset for calibration
-def representative_dataset():
-    for _ in range(100):
-        yield [np.random.rand(1, 256, 256, 3).astype(np.float32)]
-
-converter.representative_dataset = representative_dataset
-tflite_model = converter.convert()
-
-# Save
-with open('model_quantized.tflite', 'wb') as f:
-    f.write(tflite_model)
-```
-
-### Expected File Sizes After Quantization
-
-| Model | Original | INT8 Quantized |
-|-------|----------|----------------|
-| MediaPipe Pose Full | ~3 MB | ~1.5 MB |
-| MediaPipe Pose Lite | ~1.5 MB | ~0.8 MB |
+| Layer | Technology |
+|-------|-----------|
+| Web frontend | React 18, Vite, TypeScript, Tailwind CSS |
+| Mobile | React Native 0.81.5, Expo 54, TypeScript |
+| Web ML | TensorFlow.js 4.22 — MoveNet Thunder (in-browser) |
+| Pose service | Python 3.11, FastAPI, BlazePose, TFLite classifier |
+| Backend | Java 17, Spring Boot 3.2.5, Spring Security (JWT) |
+| Database | PostgreSQL 16 (prod) / H2 in-memory (dev) |
+| Auth | JWT + httpOnly refresh cookie |
+| AI plans | Gemini 2.0 Flash / Anthropic Claude (configurable) |
+| Containerisation | Docker Compose |
 
 ---
 
-## PART B: REACT NATIVE MOBILE APP
-
-### Project Structure
+## Project Structure
 
 ```
 yogifi-ai/
-├── App.tsx                          # Main app entry
-├── app.json                         # Expo configuration
-├── package.json                     # Dependencies
-├── tsconfig.json                    # TypeScript config
-├── babel.config.js                  # Babel config
-├── pose_detection_poc.py            # Python POC script
-├── README.md                        # This file
-├── assets/                          # App assets
-└── src/
-    ├── constants/
-    │   └── colors.ts                # Color palette
-    ├── types/
-    │   └── index.ts                 # TypeScript interfaces
-    ├── services/
-    │   └── api.ts                   # API service with axios
-    ├── navigation/
-    │   └── AppNavigator.tsx         # Stack navigator
-    └── screens/
-        ├── index.ts                 # Screen exports
-        ├── SplashScreen.tsx         # Logo + auto-navigate
-        ├── LoginScreen.tsx          # Email/password form
-        ├── HomeScreen.tsx           # Dashboard + Start Practice
-        ├── CameraScreen.tsx         # Placeholder for pose detection
-        └── ProfileScreen.tsx        # User profile + stats
+├── web/                        # Vite + React web app
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── Session.tsx     # Live pose detection screen
+│   │   │   ├── Dashboard.tsx   # Sidebar layout
+│   │   │   ├── Login.tsx / Signup.tsx / Onboarding.tsx
+│   │   │   └── dashboard/      # AI chat, poses, fitness, nutrition views
+│   │   ├── components/         # BrutalistCursor, BrutalistMarquee, etc.
+│   │   ├── lib/api.ts          # Axios client + token interceptors
+│   │   └── index.css           # Wellness Brutalism design tokens
+│   └── public/poses/           # Reference pose images (jpg)
+├── src/                        # React Native / Expo app
+│   ├── screens/
+│   │   ├── CameraScreen.tsx    # Native pose session
+│   │   └── WebCameraScreen.tsx # Web camera session
+│   ├── services/
+│   │   ├── poseDetector.ts     # Mock pose engine
+│   │   ├── webPoseDetector.ts  # TF.js MoveNet (web)
+│   │   └── poseRules.ts        # Angle + alignment scoring
+│   └── constants/config.ts     # Feature flags
+├── pose-service/
+│   └── main.py                 # FastAPI — BlazePose + TFLite
+├── yogifi-backend/             # Spring Boot API
+│   ├── src/main/java/com/yogifi/
+│   │   ├── controller/         # REST endpoints
+│   │   ├── service/            # Business logic + AI integration
+│   │   ├── security/           # JWT filter
+│   │   └── config/             # CORS, security, DataLoader
+│   └── docker-compose.yml
+└── pose_detection_poc.py       # MediaPipe webcam demo (Python)
 ```
-
-### Setup Instructions
-
-```bash
-# 1. Navigate to project directory
-cd ~/Projects/yogifi-ai
-
-# 2. Install dependencies
-npm install
-
-# 3. Start Expo development server
-npx expo start
-
-# 4. Run on device/simulator
-# Press 'i' for iOS simulator
-# Press 'a' for Android emulator
-# Or scan QR code with Expo Go app
-```
-
-### Navigation Flow
-
-```
-Splash (2 sec) → Login → Home ↔ Camera
-                   ↓
-                Profile
-```
-
-### API Endpoints (Configured)
-
-Base URL: `http://localhost:8080/api`
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/auth/login` | POST | User login |
-| `/auth/register` | POST | User registration |
-| `/user/profile` | GET | Get user profile |
-| `/sessions/start` | POST | Start yoga session |
-| `/sessions/:id/end` | POST | End yoga session |
 
 ---
 
-## Next Steps
+## Quick Start
 
-### Phase 1: Test Current Setup
-1. Run Python POC to verify pose detection works
-2. Run React Native app to verify navigation works
+### 1. Spring Boot backend
 
-### Phase 2: Integrate Pose Detection (Future)
 ```bash
-# When ready to add real pose detection:
-npx expo install expo-dev-client
-npm install react-native-vision-camera react-native-mediapipe
+cd yogifi-backend
+
+# Dev (H2 in-memory, no DB setup needed)
+JWT_SECRET=<64-char-secret> AI_API_KEY=<key> ./mvnw spring-boot:run
+
+# Production (PostgreSQL via Docker)
+cp .env.example .env          # fill in secrets
+docker-compose up --build -d
 ```
 
-### Phase 3: Add Animations (Future)
+### 2. Python pose service
+
 ```bash
-# When ready to add smooth animations:
-npx expo install react-native-reanimated
+cd pose-service
+pip install fastapi uvicorn opencv-python mediapipe numpy
+python main.py                # listens on :8001
 ```
+
+### 3. Web frontend
+
+```bash
+cd web
+npm install
+npm run dev                   # http://localhost:5173
+```
+
+### 4. React Native (Expo)
+
+```bash
+npm install
+npx expo start                # all platforms
+npx expo start --web          # web only
+npx expo run:ios              # iOS simulator
+npx expo run:android          # Android emulator
+```
+
+---
+
+## Environment Variables
+
+```bash
+# Backend (.env in yogifi-backend/)
+JWT_SECRET=          # min 64 chars — openssl rand -base64 64
+DB_PASSWORD=
+AI_PROVIDER=gemini   # or: anthropic
+AI_API_KEY=
+AI_API_URL=          # Gemini or Anthropic endpoint
+
+# Web frontend (web/.env)
+VITE_API_URL=http://localhost:8080/api
+```
+
+---
+
+## API Overview
+
+All endpoints are under `/api`. Auth endpoints are public; everything else requires `Authorization: Bearer <token>`.
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/auth/register` | POST | Public | Create account |
+| `/auth/login` | POST | Public | Get JWT + refresh cookie |
+| `/auth/refresh` | POST | Cookie | Silent token refresh |
+| `/auth/logout` | POST | JWT | Revoke session |
+| `/poses/list` | GET | Public | All poses |
+| `/poses/{id}` | GET | Public | Pose details + imageUrl |
+| `/pose/analyze-frame` | POST | JWT | Frame → pose score (proxies to Python service) |
+| `/pose/health` | GET | JWT | Python service liveness |
+| `/sessions` | POST/GET | JWT | Start / list sessions |
+| `/chat/ask` | POST | JWT | AI coach message |
+| `/chat/history` | GET | JWT | Conversation history |
+| `/fitness/generate-plan` | POST | JWT | AI fitness plan |
+| `/nutrition/generate-plan` | POST | JWT | AI nutrition plan |
+
+---
+
+## Pose Detection Pipeline
+
+```
+Camera frame (1280×720 JPEG @ 40% quality)
+    │
+    ▼  [browser]
+TF.js MoveNet Thunder → 17 keypoints
+    │
+    ├─ Skeleton overlay drawn on canvas
+    │
+    └─ POST /api/pose/analyze-frame (every 500 ms)
+            │
+            ▼  [Spring Boot → Python service]
+        BlazePose → 33 keypoints → TFLite classifier
+            │
+            └─ pose_name, confidence, score, corrections
+                    │
+                    ▼  [browser]
+                EMA smoothing → display score + HUD
+```
+
+**Local scoring fallback** (when backend offline):
+angle (40%) + alignment (35%) + symmetry (25%) computed from MoveNet keypoints — no server needed.
+
+### Supported Poses
+
+| Pose | Sanskrit | mlModelKey |
+|------|----------|------------|
+| Warrior II | Virabhadrasana II | `warrior2` |
+| Tree Pose | Vrksasana | `tree` |
+| Downward Dog | Adho Mukha Svanasana | `downdog` |
+| Goddess Pose | Utkata Konasana | `goddess` |
+| Plank Pose | Phalakasana | `plank` |
+
+---
+
+## Feature Flags (`src/constants/config.ts`)
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `USE_MOCK_POSE_DETECTION` | `true` | Toggle real vs mock pose engine |
+| `ENABLE_POSE_DETECTION` | `true` | Master pose detection toggle |
+| `USE_MOCK_SCORES` | `false` | Static scores for UI testing |
+| `ENABLE_VOICE_FEEDBACK` | `true` | Expo Speech announcements |
+| `ENABLE_SKELETON_OVERLAY` | `true` | Draw keypoints on camera |
+| `ENABLE_DEBUG_OVERLAY` | `false` | Show debug panel |
+| `CONFETTI_SCORE_THRESHOLD` | `80` | Score to trigger confetti |
+
+---
+
+## Design System — Wellness Brutalism
+
+The web app uses a hybrid design language: editorial wellness base with neo-brutalist accents.
+
+```css
+--bg:      #F7F4EE   /* warm off-white */
+--ink:     #1A1816   /* near-black */
+--accent:  #C9472F   /* coral red */
+--acid:    #D2E823   /* electric yellow-green */
+--brutal:  #09090B   /* pure black (borders, shadows) */
+--muted:   #6B6560
+--line:    #E8E4DC
+--surface: #EFECE5
+```
+
+Hard shadows: `box-shadow: 4px 4px 0 0 var(--brutal)`.
+Hover: `translate(4px, 4px)` + shadow collapses to 0.
+
+---
+
+## Backend URL by Platform
+
+| Platform | Base URL |
+|----------|----------|
+| Web dev | `http://localhost:8080/api` |
+| Android emulator | `http://10.0.2.2:8080/api` |
+| iOS device | `http://<your-local-ip>:8080/api` |
 
 ---
 
 ## Troubleshooting
 
-### Python Script Issues
+**Pose service offline banner** — Spring Boot (Docker) cannot reach the Python service via `localhost`. The `docker-compose.yml` sets `POSE_SERVICE_URL=http://host.docker.internal:8001` to route to the host machine. Make sure `python main.py` is running before starting Docker.
 
-**Webcam not opening:**
+**Camera permission (iOS)** — `NSCameraUsageDescription` is set in `app.json`. Expo Go does not support native ML modules; use `expo-dev-client` for real MediaPipe.
+
+**Android emulator** — Use `10.0.2.2` not `localhost` for backend calls.
+
+**MoveNet / WebGL** — TF.js requires WebGL. Initialise the backend (`await tf.ready()`) before calling `poseDetection.createDetector`.
+
+**Metro bundler cache:**
 ```bash
-# Check if another app is using the camera
-# On macOS, check System Preferences > Privacy > Camera
-```
-
-**Low FPS:**
-```bash
-# Reduce camera resolution in the script
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-```
-
-### React Native Issues
-
-**Metro bundler errors:**
-```bash
-# Clear cache and restart
 npx expo start --clear
 ```
 
-**TypeScript errors:**
+**TypeScript check:**
 ```bash
-# Check TypeScript compilation
-npx tsc --noEmit
+cd web && npx tsc --noEmit
 ```
-
----
-
-## Tech Stack Summary
-
-| Component | Technology |
-|-----------|------------|
-| AI Model | MediaPipe Pose (Full) |
-| Model Format | TensorFlow Lite (built-in) |
-| Mobile Framework | React Native + Expo |
-| Navigation | React Navigation 6 |
-| State Management | React hooks (for now) |
-| API Client | Axios |
-| Secure Storage | expo-secure-store |
-| Language | TypeScript |
 
 ---
 
 ## License
 
-Proprietary - Yogifi AI
+Proprietary — Yogifi AI
