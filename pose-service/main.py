@@ -14,6 +14,7 @@ Run: python main.py   (port 8001)
 
 import sys
 import json
+import time
 import base64
 import pickle
 import logging
@@ -230,6 +231,7 @@ async def analyze_frame(request: FrameRequest):
         raise HTTPException(status_code=503, detail="Models not loaded yet")
 
     try:
+        start_time = time.time()
         # Decode base64 → numpy image
         img_bytes = base64.b64decode(request.frame)
         nparr = np.frombuffer(img_bytes, np.uint8)
@@ -254,6 +256,10 @@ async def analyze_frame(request: FrameRequest):
         body_indices = [11, 12, 23, 24, 25, 26, 27, 28]
         body_visibility = [kps_list[i]["visibility"] for i in body_indices]
         full_body_visible = all(v > 0.5 for v in body_visibility)
+
+        elapsed_ms = (time.time() - start_time) * 1000
+        log.info("Frame analyzed in %.0fms: %s (confidence=%.3f, score=%.1f)",
+                 elapsed_ms, result["pose_name"], result["confidence"], result["score"])
 
         return {
             "pose_detected": True,
