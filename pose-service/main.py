@@ -216,6 +216,7 @@ async def predict(request: KeypointsRequest):
     try:
         kps_raw = np.array([[k[0], k[1], k[2]] for k in request.keypoints], dtype=np.float32)
         result = _run_inference(kps_raw)
+        log.debug("Prediction: %s (confidence=%.3f)", result["pose_name"], result["confidence"])
         return result
     except Exception as e:
         log.exception("Inference failed")
