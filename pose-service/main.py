@@ -242,6 +242,7 @@ async def analyze_frame(request: FrameRequest):
         kps_list = extractor.extract_from_array(frame_rgb)
 
         if kps_list is None:
+            log.debug("No person detected in frame (session=%s)", request.session_id)
             return _empty_response("No person detected")
 
         # Run TFLite classification
