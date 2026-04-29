@@ -57,6 +57,7 @@ CONFIG_DIR = Path(POSE_DETECTION_ROOT) / "config"
 TFLITE_MODEL_PATH = str(MODEL_DIR / "yogifi_pose_fp32.tflite")
 LABEL_ENCODER_PATH = str(MODEL_DIR / "label_encoder.pkl")
 POSE_REFERENCES_PATH = str(CONFIG_DIR / "pose_references.json")
+VISIBILITY_THRESHOLD = 0.5  # minimum visibility for body landmark detection
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("pose-service")
@@ -255,7 +256,7 @@ async def analyze_frame(request: FrameRequest):
         # Check full-body visibility (shoulders, hips, knees, ankles)
         body_indices = [11, 12, 23, 24, 25, 26, 27, 28]
         body_visibility = [kps_list[i]["visibility"] for i in body_indices]
-        full_body_visible = all(v > 0.5 for v in body_visibility)
+        full_body_visible = all(v > VISIBILITY_THRESHOLD for v in body_visibility)
 
         elapsed_ms = (time.time() - start_time) * 1000
         log.info("Frame analyzed in %.0fms: %s (confidence=%.3f, score=%.1f)",
