@@ -204,7 +204,7 @@ async def health():
 
 @app.get("/poses")
 async def get_poses():
-    return {"poses": supported_poses}
+    return {"poses": supported_poses, "count": len(supported_poses)}
 
 
 @app.post("/predict")
