@@ -138,11 +138,13 @@ _POSE_NAME_MAP = {
     'tree':     'tree_pose',
     'warrior2': 'warrior_2',
     'warrior1': 'warrior_1',
-    # these already match:
     'goddess':  'goddess',
     'plank':    'plank',
     'child':    'child_pose',
 }
+
+# Minimum confidence to consider a classification reliable
+MIN_CONFIDENCE_THRESHOLD = 0.3
 
 
 def _run_inference(kps_raw: np.ndarray) -> dict:
@@ -166,6 +168,9 @@ def _run_inference(kps_raw: np.ndarray) -> dict:
 
     # Normalise to correction engine naming convention
     pose_name = _POSE_NAME_MAP.get(raw_pose_name, raw_pose_name)
+
+    if confidence < MIN_CONFIDENCE_THRESHOLD:
+        log.debug("Low confidence prediction: %s (%.3f)", pose_name, confidence)
 
     angles = extract_angle_features(kps_raw)
     corrections = corrector.analyze(pose_name, angles)
